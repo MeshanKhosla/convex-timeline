@@ -253,3 +253,30 @@ export const deleteCheckpoint = mutation({
     return null;
   },
 });
+
+export const getAllTimelineNodes = query({
+  args: {
+    todoListId: v.id("todoLists"),
+  },
+  returns: v.array(
+    v.object({
+      position: v.number(),
+      document: v.any(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
+    return await todoTimeline.getAllNodes(ctx);
+  },
+});
+
+export const getCheckpointPositions = query({
+  args: {
+    todoListId: v.id("todoLists"),
+  },
+  returns: v.array(v.number()),
+  handler: async (ctx, args) => {
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
+    return await todoTimeline.getCheckpointPositions(ctx);
+  },
+});

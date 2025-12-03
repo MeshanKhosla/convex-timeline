@@ -199,6 +199,24 @@ export class Timeline<TimelineScope extends string = string> {
     });
   }
 
+  /** Get all nodes for a scope with their positions. */
+  async getAllNodes<Scope extends TimelineScope>(
+    ctx: QueryCtx,
+    scope: Scope,
+  ): Promise<Array<{ position: number; document: unknown }>> {
+    return await ctx.runQuery(this.component.lib.getAllNodes, { scope });
+  }
+
+  /** Get positions that have checkpoints. */
+  async getCheckpointPositions<Scope extends TimelineScope>(
+    ctx: QueryCtx,
+    scope: Scope,
+  ): Promise<number[]> {
+    return await ctx.runQuery(this.component.lib.getCheckpointPositions, {
+      scope,
+    });
+  }
+
   /**
    * Create a scoped facade with the scope pre-bound.
    *
@@ -229,6 +247,9 @@ export class Timeline<TimelineScope extends string = string> {
       deleteScope: (ctx: MutationCtx) => this.deleteScope(ctx, scope),
       getAtPosition: (ctx: QueryCtx, position: number) =>
         this.getAtPosition(ctx, scope, position),
+      getAllNodes: (ctx: QueryCtx) => this.getAllNodes(ctx, scope),
+      getCheckpointPositions: (ctx: QueryCtx) =>
+        this.getCheckpointPositions(ctx, scope),
     };
   }
 }

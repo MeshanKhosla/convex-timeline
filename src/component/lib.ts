@@ -276,12 +276,16 @@ export const checkpoint = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { document: currentNode.document });
+      await ctx.db.patch(existing._id, {
+        document: currentNode.document,
+        position: scope.head,
+      });
     } else {
       await ctx.db.insert("checkpoints", {
         scope: scope._id,
         name: args.name,
         document: currentNode.document,
+        position: scope.head,
       });
     }
 
@@ -503,5 +507,69 @@ export const getAtPosition = query({
       .unique();
 
     return node?.document ?? null;
+  },
+});
+
+/**
+ * Get all nodes for a scope with their positions.
+ * Returns array of { position, document } sorted by position.
+ */
+export const getAllNodes = query({
+  args: { scope: v.string() },
+  returns: v.array(
+    v.object({
+      position: v.number(),
+      document: v.any(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const scope = await ctx.db
+      .query("scopes")
+      .withIndex("by_name", (q) => q.eq("name", args.scope))
+      .unique();
+
+    if (!scope) return [];
+
+    const nodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
+      .collect();
+
+    return nodes
+      .map((node) => ({
+        position: node.index,
+        document: node.document,
+      }))
+      .sort((a, b) => a.position - b.position);
+  },
+});
+
+/**
+ * Get positions that have checkpoints.
+ * Returns an array of positions that have checkpoints.
+ */
+export const getCheckpointPositions = query({
+  args: { scope: v.string() },
+  returns: v.array(v.number()),
+  handler: async (ctx, args) => {
+    const scope = await ctx.db
+      .query("scopes")
+      .withIndex("by_name", (q) => q.eq("name", args.scope))
+      .unique();
+
+    if (!scope) return [];
+
+    const checkpoints = await ctx.db
+      .query("checkpoints")
+      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
+      .collect();
+
+    // Get unique positions from checkpoints
+    const positions = new Set<number>();
+    for (const checkpoint of checkpoints) {
+      positions.add(checkpoint.position);
+    }
+
+    return Array.from(positions);
   },
 });

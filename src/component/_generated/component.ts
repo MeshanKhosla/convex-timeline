@@ -52,6 +52,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      getAllNodes: FunctionReference<
+        "query",
+        "internal",
+        { scope: string },
+        Array<{ document: any; position: number }>,
+        Name
+      >;
       getAtPosition: FunctionReference<
         "query",
         "internal",
@@ -64,6 +71,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { name: string; scope: string },
         any | null,
+        Name
+      >;
+      getCheckpointPositions: FunctionReference<
+        "query",
+        "internal",
+        { scope: string },
+        Array<number>,
         Name
       >;
       getCheckpoints: FunctionReference<

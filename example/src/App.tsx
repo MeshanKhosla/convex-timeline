@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../convex/_generated/dataModel";
+import { TimelineVisualization } from "./TimelineVisualization";
 
 export default function App() {
   const todoLists = useQuery(api.example.getTodoLists);
@@ -21,8 +22,20 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Todo Lists</h1>
-        <p>With undo/redo powered by Timeline</p>
+        <h1>
+          Todo Lists{" "}
+          <span className="header-subtitle">
+            - Powered by{" "}
+            <a
+              href="https://github.com/MeshanKhosla/convex-timeline"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="header-link"
+            >
+              convex-timeline
+            </a>
+          </span>
+        </h1>
       </header>
 
       <div className="layout">
@@ -36,7 +49,9 @@ export default function App() {
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
             />
-            <button type="submit">Create List</button>
+            <button type="submit" disabled={!newListName.trim()}>
+              Create List
+            </button>
           </form>
 
           <div className="lists">
@@ -131,33 +146,34 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
   return (
     <div className="todo-panel">
       <div className="todo-toolbar">
-        <h2 className="todo-title">Todos</h2>
         <div className="toolbar-actions">
-          <span className="position-indicator">
-            {status.position} / {status.length}
-          </span>
           <button
             className="toolbar-btn"
             onClick={() => undo({ todoListId: listId })}
             disabled={!status.canUndo}
+            title="Undo"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 10h10a5 5 0 0 1 5 5v2M3 10l5-5M3 10l5 5" />
             </svg>
-            Undo
           </button>
           <button
             className="toolbar-btn"
             onClick={() => redo({ todoListId: listId })}
             disabled={!status.canRedo}
+            title="Redo"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 10H11a5 5 0 0 0-5 5v2M21 10l-5-5M21 10l-5 5" />
             </svg>
-            Redo
           </button>
         </div>
       </div>
+
+      <TimelineVisualization
+        listId={listId}
+        currentPosition={status.position}
+      />
 
       <form className="add-form" onSubmit={handleAdd}>
         <input
@@ -166,7 +182,9 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
           value={newTodo}
           onChange={(e) => setNewTodo(e.target.value)}
         />
-        <button type="submit">Add</button>
+        <button type="submit" disabled={!newTodo.trim()}>
+          Add
+        </button>
       </form>
 
       <div className="todo-list">
@@ -196,7 +214,13 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                     onChange={(e) => setEditText(e.target.value)}
                     autoFocus
                   />
-                  <button type="submit" className="save-btn">Save</button>
+                  <button
+                    type="submit"
+                    className="save-btn"
+                    disabled={!editText.trim()}
+                  >
+                    Save
+                  </button>
                   <button type="button" className="cancel-btn" onClick={handleCancel}>
                     Cancel
                   </button>
@@ -240,7 +264,10 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
             onChange={(e) => setCheckpointName(e.target.value)}
             disabled={status.position === 0}
           />
-          <button type="submit" disabled={status.position === 0}>
+          <button
+            type="submit"
+            disabled={status.position === 0 || !checkpointName.trim()}
+          >
             Save
           </button>
         </form>
