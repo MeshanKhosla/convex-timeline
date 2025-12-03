@@ -23,7 +23,7 @@ describe("timeline component", () => {
       expect(current).toEqual({ value: "A" });
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(1);
+      expect(status.position).toBe(0);
       expect(status.length).toBe(1);
       expect(status.canUndo).toBe(true);
       expect(status.canRedo).toBe(false);
@@ -39,12 +39,12 @@ describe("timeline component", () => {
 
       await t.mutation(api.lib.undo, { scope });
       const statusAfterUndo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo.position).toBe(2);
+      expect(statusAfterUndo.position).toBe(1);
 
       await t.mutation(api.lib.push, { scope, document: { value: "D" } });
 
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterPush.position).toBe(3);
+      expect(statusAfterPush.position).toBe(2);
       expect(statusAfterPush.length).toBe(3);
       expect(statusAfterPush.canRedo).toBe(false);
 
@@ -94,12 +94,12 @@ describe("timeline component", () => {
       }
 
       const statusBeforeUndo = await t.query(api.lib.getStatus, { scope });
-      expect(statusBeforeUndo.position).toBe(10);
+      expect(statusBeforeUndo.position).toBe(9);
       expect(statusBeforeUndo.length).toBe(10);
 
       await t.mutation(api.lib.undo, { scope, count: 7 });
       const statusAfterUndo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo.position).toBe(3);
+      expect(statusAfterUndo.position).toBe(2);
       expect(statusAfterUndo.length).toBe(10);
 
       await t.mutation(api.lib.push, {
@@ -109,7 +109,7 @@ describe("timeline component", () => {
       });
 
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterPush.position).toBe(4);
+      expect(statusAfterPush.position).toBe(3);
       expect(statusAfterPush.length).toBe(1);
 
       const currentAfterPush = await t.query(api.lib.getCurrentDocument, {
@@ -120,14 +120,14 @@ describe("timeline component", () => {
 
       const nodeAtHead = await t.query(api.lib.getDocumentAtPosition, {
         scope,
-        position: statusAfterPush.position,
+        position: statusAfterPush.position!,
       });
       expect(nodeAtHead).not.toBeNull();
       expect(nodeAtHead).toEqual({ value: "K" });
 
       const allNodes = await t.query(api.lib.listNodes, { scope });
       expect(allNodes.length).toBe(1);
-      expect(allNodes[0].position).toBe(4);
+      expect(allNodes[0].position).toBe(3);
       expect(allNodes[0].document).toEqual({ value: "K" });
     });
 
@@ -294,18 +294,18 @@ describe("timeline component", () => {
       await t.mutation(api.lib.push, { scope, document: { value: "C" } });
 
       const statusBefore = await t.query(api.lib.getStatus, { scope });
-      expect(statusBefore.position).toBe(3);
+      expect(statusBefore.position).toBe(2);
 
       const undoneState = await t.mutation(api.lib.undo, { scope });
       expect(undoneState).toEqual({ value: "B" });
 
       const statusAfter = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfter.position).toBe(2);
+      expect(statusAfter.position).toBe(1);
       expect(statusAfter.canUndo).toBe(true);
       expect(statusAfter.canRedo).toBe(true);
     });
 
-    test("undo to position 0 returns null", async () => {
+    test("undo to null returns null", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -315,7 +315,7 @@ describe("timeline component", () => {
       expect(undoneState).toBeNull();
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(0);
+      expect(status.position).toBeNull();
       expect(status.canUndo).toBe(false);
       expect(status.canRedo).toBe(true);
     });
@@ -339,7 +339,7 @@ describe("timeline component", () => {
       expect(result).toBeNull();
     });
 
-    test("undo with count greater than available positions clamps to position 0", async () => {
+    test("undo with count greater than available positions clamps to null", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -350,7 +350,7 @@ describe("timeline component", () => {
       expect(result).toBeNull();
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(0);
+      expect(status.position).toBeNull();
       expect(status.canUndo).toBe(false);
       expect(status.canRedo).toBe(true);
     });
@@ -370,7 +370,7 @@ describe("timeline component", () => {
       expect(result).toEqual({ value: "B" });
     });
 
-    test("multiple consecutive undos to position 0", async () => {
+    test("multiple consecutive undos to null", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -382,7 +382,7 @@ describe("timeline component", () => {
       expect(result).toBeNull();
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(0);
+      expect(status.position).toBeNull();
     });
   });
 
@@ -399,7 +399,7 @@ describe("timeline component", () => {
       expect(redoneState).toEqual({ value: "B" });
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(2);
+      expect(status.position).toBe(1);
       expect(status.canRedo).toBe(false);
     });
 
@@ -437,7 +437,7 @@ describe("timeline component", () => {
       expect(result).toEqual({ value: "C" });
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(3);
+      expect(status.position).toBe(2);
       expect(status.canRedo).toBe(false);
     });
 
@@ -467,7 +467,7 @@ describe("timeline component", () => {
       expect(result).toEqual({ value: "A" });
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(1);
+      expect(status.position).toBe(0);
     });
 
     test("multiple consecutive redos at end position", async () => {
@@ -494,10 +494,10 @@ describe("timeline component", () => {
       await t.mutation(api.lib.createCheckpoint, { scope, name: "v1" });
 
       const checkpoints = await t.query(api.lib.listCheckpoints, { scope });
-      expect(checkpoints).toEqual([{ name: "v1", position: 2 }]);
+      expect(checkpoints).toEqual([{ name: "v1", position: 1 }]);
     });
 
-    test("createCheckpoint at position 0 throws error", async () => {
+    test("createCheckpoint when head is null throws error", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -506,7 +506,7 @@ describe("timeline component", () => {
 
       await expect(
         t.mutation(api.lib.createCheckpoint, { scope, name: "v1" }),
-      ).rejects.toThrow("Cannot checkpoint at position 0");
+      ).rejects.toThrow("Cannot checkpoint when head is null");
     });
 
     test("createCheckpoint with existing name overwrites", async () => {
@@ -666,7 +666,7 @@ describe("timeline component", () => {
       expect(restored).toEqual({ value: "B" });
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(4);
+      expect(status.position).toBe(3);
       expect(status.length).toBe(4);
 
       const undone = await t.mutation(api.lib.undo, { scope });
@@ -802,16 +802,16 @@ describe("timeline component", () => {
       const scope = "test-scope";
 
       await t.mutation(api.lib.push, { scope, document: { value: "A" } });
-      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-1" });
+      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-0" });
 
       await t.mutation(api.lib.push, { scope, document: { value: "B" } });
       await t.mutation(api.lib.push, { scope, document: { value: "C" } });
-      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-3" });
+      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-2" });
 
       const checkpoints = await t.query(api.lib.listCheckpoints, { scope });
       expect(checkpoints).toHaveLength(2);
-      expect(checkpoints).toContainEqual({ name: "cp-1", position: 1 });
-      expect(checkpoints).toContainEqual({ name: "cp-3", position: 3 });
+      expect(checkpoints).toContainEqual({ name: "cp-0", position: 0 });
+      expect(checkpoints).toContainEqual({ name: "cp-2", position: 2 });
     });
 
     test("listCheckpoints position updates when checkpoint is overwritten", async () => {
@@ -822,56 +822,56 @@ describe("timeline component", () => {
       await t.mutation(api.lib.createCheckpoint, { scope, name: "cp" });
 
       let checkpoints = await t.query(api.lib.listCheckpoints, { scope });
-      expect(checkpoints).toEqual([{ name: "cp", position: 1 }]);
+      expect(checkpoints).toEqual([{ name: "cp", position: 0 }]);
 
       await t.mutation(api.lib.push, { scope, document: { value: "B" } });
       await t.mutation(api.lib.push, { scope, document: { value: "C" } });
       await t.mutation(api.lib.createCheckpoint, { scope, name: "cp" });
 
       checkpoints = await t.query(api.lib.listCheckpoints, { scope });
-      expect(checkpoints).toEqual([{ name: "cp", position: 3 }]);
+      expect(checkpoints).toEqual([{ name: "cp", position: 2 }]);
     });
 
     test("checkpoint position becomes null when its node is pruned", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
-      // 1. Add five todos (positions 1-5)
+      // 1. Add five todos (positions 0-4)
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-0" } });
       await t.mutation(api.lib.push, { scope, document: { value: "todo-1" } });
       await t.mutation(api.lib.push, { scope, document: { value: "todo-2" } });
       await t.mutation(api.lib.push, { scope, document: { value: "todo-3" } });
       await t.mutation(api.lib.push, { scope, document: { value: "todo-4" } });
-      await t.mutation(api.lib.push, { scope, document: { value: "todo-5" } });
 
       const statusAfterPushes = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterPushes.position).toBe(5);
+      expect(statusAfterPushes.position).toBe(4);
 
-      // 2. Undo twice (head at 3)
+      // 2. Undo twice (head at 2)
       await t.mutation(api.lib.undo, { scope, count: 2 });
       const statusAfterUndo2 = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo2.position).toBe(3);
+      expect(statusAfterUndo2.position).toBe(2);
 
-      // 3. Create checkpoint at position 3 (document: "todo-3")
-      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-at-3" });
+      // 3. Create checkpoint at position 2 (document: "todo-2")
+      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-at-2" });
       const checkpointsAfterCreate = await t.query(api.lib.listCheckpoints, {
         scope,
       });
       expect(checkpointsAfterCreate).toEqual([
-        { name: "cp-at-3", position: 3 },
+        { name: "cp-at-2", position: 2 },
       ]);
 
-      // 4. Undo once (head at 2)
+      // 4. Undo once (head at 1)
       await t.mutation(api.lib.undo, { scope });
       const statusAfterUndo1 = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo1.position).toBe(2);
+      expect(statusAfterUndo1.position).toBe(1);
 
-      // 5. Push new document - this prunes nodes at positions 3-5 and creates new node at position 3
+      // 5. Push new document - this prunes nodes at positions 2-4 and creates new node at position 2
       await t.mutation(api.lib.push, {
         scope,
         document: { value: "new-todo" },
       });
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterPush.position).toBe(3);
+      expect(statusAfterPush.position).toBe(2);
       expect(statusAfterPush.length).toBe(3);
 
       // The checkpoint position should now be null since its node was pruned
@@ -879,7 +879,7 @@ describe("timeline component", () => {
         scope,
       });
       expect(checkpointsAfterPush).toEqual([
-        { name: "cp-at-3", position: null },
+        { name: "cp-at-2", position: null },
       ]);
 
       // Verify the current document is the new one
@@ -889,14 +889,14 @@ describe("timeline component", () => {
       // Verify the checkpoint still restores the OLD document (it persists independently)
       const checkpointDoc = await t.query(api.lib.getCheckpointDocument, {
         scope,
-        name: "cp-at-3",
+        name: "cp-at-2",
       });
-      expect(checkpointDoc).toEqual({ value: "todo-3" });
+      expect(checkpointDoc).toEqual({ value: "todo-2" });
 
-      // The nodes list should show position 3 has "new-todo", not "todo-3"
+      // The nodes list should show position 2 has "new-todo", not "todo-2"
       const nodes = await t.query(api.lib.listNodes, { scope });
-      const nodeAt3 = nodes.find((n) => n.position === 3);
-      expect(nodeAt3?.document).toEqual({ value: "new-todo" });
+      const nodeAt2 = nodes.find((n) => n.position === 2);
+      expect(nodeAt2?.document).toEqual({ value: "new-todo" });
     });
   });
 
@@ -919,7 +919,7 @@ describe("timeline component", () => {
       expect(status).toEqual({
         canUndo: false,
         canRedo: false,
-        position: 0,
+        position: null,
         length: 0,
       });
     });
@@ -948,7 +948,7 @@ describe("timeline component", () => {
 
         const status = await t.query(api.lib.getStatus, { scope });
         expect(status.length).toBe(0);
-        expect(status.position).toBe(0);
+        expect(status.position).toBeNull();
         expect(status.canUndo).toBe(false);
         expect(status.canRedo).toBe(false);
       }
@@ -1005,13 +1005,13 @@ describe("timeline component", () => {
 
       const statusAfterClear = await t.query(api.lib.getStatus, { scope });
       expect(statusAfterClear.length).toBe(0);
-      expect(statusAfterClear.position).toBe(0);
+      expect(statusAfterClear.position).toBeNull();
 
       await t.mutation(api.lib.push, { scope, document: { value: "C" } });
 
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
       expect(statusAfterPush.length).toBe(1);
-      expect(statusAfterPush.position).toBe(1);
+      expect(statusAfterPush.position).toBe(0);
 
       const current = await t.query(api.lib.getCurrentDocument, { scope });
       expect(current).toEqual({ value: "C" });
@@ -1048,7 +1048,7 @@ describe("timeline component", () => {
         await t.mutation(api.lib.deleteScope, { scope });
 
         const status = await t.query(api.lib.getStatus, { scope });
-        expect(status.position).toBe(0);
+        expect(status.position).toBeNull();
         expect(status.length).toBe(0);
         expect(status.canUndo).toBe(false);
         expect(status.canRedo).toBe(false);
@@ -1081,13 +1081,13 @@ describe("timeline component", () => {
 
       const statusAfterDelete = await t.query(api.lib.getStatus, { scope });
       expect(statusAfterDelete.length).toBe(0);
-      expect(statusAfterDelete.position).toBe(0);
+      expect(statusAfterDelete.position).toBeNull();
 
       await t.mutation(api.lib.push, { scope, document: { value: "C" } });
 
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
       expect(statusAfterPush.length).toBe(1);
-      expect(statusAfterPush.position).toBe(1);
+      expect(statusAfterPush.position).toBe(0);
 
       const current = await t.query(api.lib.getCurrentDocument, { scope });
       expect(current).toEqual({ value: "C" });
@@ -1121,13 +1121,13 @@ describe("timeline component", () => {
       await t.mutation(api.lib.deleteScope, { scope: scope1 });
 
       const status2 = await t.query(api.lib.getStatus, { scope: scope2 });
-      expect(status2.position).toBe(1);
+      expect(status2.position).toBe(0);
       expect(status2.length).toBe(1);
 
       const checkpoints2 = await t.query(api.lib.listCheckpoints, {
         scope: scope2,
       });
-      expect(checkpoints2).toEqual([{ name: "cp2", position: 1 }]);
+      expect(checkpoints2).toEqual([{ name: "cp2", position: 0 }]);
     });
   });
 
@@ -1152,20 +1152,21 @@ describe("timeline component", () => {
         }
 
         const statusBefore = await t.query(api.lib.getStatus, { scope });
-        const position = Math.floor(Math.random() * numPushes) + 1;
+        // 0-indexed: position ranges from 0 to numPushes - 1
+        const position = Math.floor(Math.random() * numPushes);
 
         const retrieved = await t.query(api.lib.getDocumentAtPosition, {
           scope,
           position,
         });
-        expect(retrieved).toEqual(documents[position - 1]);
+        expect(retrieved).toEqual(documents[position]);
 
         const statusAfter = await t.query(api.lib.getStatus, { scope });
         expect(statusAfter.position).toBe(statusBefore.position);
       }
     });
 
-    test("getDocumentAtPosition returns null for position 0", async () => {
+    test("getDocumentAtPosition returns document for position 0", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -1175,7 +1176,7 @@ describe("timeline component", () => {
         scope,
         position: 0,
       });
-      expect(result).toBeNull();
+      expect(result).toEqual({ value: "A" });
     });
 
     test("getDocumentAtPosition returns null for position beyond timeline length", async () => {
@@ -1187,7 +1188,7 @@ describe("timeline component", () => {
 
       const result = await t.query(api.lib.getDocumentAtPosition, {
         scope,
-        position: 3,
+        position: 2,
       });
       expect(result).toBeNull();
     });
@@ -1235,21 +1236,22 @@ describe("timeline component", () => {
         maxNodes: 2,
       });
 
+      // Position 0 was pruned
       const result = await t.query(api.lib.getDocumentAtPosition, {
         scope,
-        position: 1,
+        position: 0,
       });
       expect(result).toBeNull();
 
       const result2 = await t.query(api.lib.getDocumentAtPosition, {
         scope,
-        position: 2,
+        position: 1,
       });
       expect(result2).toEqual({ value: "B" });
 
       const result3 = await t.query(api.lib.getDocumentAtPosition, {
         scope,
-        position: 3,
+        position: 2,
       });
       expect(result3).toEqual({ value: "C" });
     });
@@ -1269,9 +1271,9 @@ describe("timeline component", () => {
       expect(nodes[0].document).toEqual({ value: "A" });
       expect(nodes[1].document).toEqual({ value: "B" });
       expect(nodes[2].document).toEqual({ value: "C" });
-      expect(nodes[0].position).toBe(1);
-      expect(nodes[1].position).toBe(2);
-      expect(nodes[2].position).toBe(3);
+      expect(nodes[0].position).toBe(0);
+      expect(nodes[1].position).toBe(1);
+      expect(nodes[2].position).toBe(2);
     });
 
     test("listNodes on empty scope returns empty array", async () => {
@@ -1321,8 +1323,8 @@ describe("timeline component", () => {
       const status1 = await t.query(api.lib.getStatus, { scope: scope1 });
       const status2 = await t.query(api.lib.getStatus, { scope: scope2 });
 
-      expect(status1.position).toBe(1);
-      expect(status2.position).toBe(1);
+      expect(status1.position).toBe(0);
+      expect(status2.position).toBe(0);
 
       const current1 = await t.query(api.lib.getCurrentDocument, {
         scope: scope1,
@@ -1361,7 +1363,7 @@ describe("timeline component", () => {
         scope: scope2,
       });
 
-      expect(checkpoints1).toEqual([{ name: "cp1", position: 1 }]);
+      expect(checkpoints1).toEqual([{ name: "cp1", position: 0 }]);
       expect(checkpoints2).toEqual([]);
     });
 
@@ -1415,17 +1417,17 @@ describe("timeline component", () => {
       await t.mutation(api.lib.undo, { scope });
 
       const statusAfterUndo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo.position).toBe(1);
+      expect(statusAfterUndo.position).toBe(0);
 
       await t.mutation(api.lib.redo, { scope });
 
       const statusAfterRedo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterRedo.position).toBe(2);
+      expect(statusAfterRedo.position).toBe(1);
 
       await t.mutation(api.lib.push, { scope, document: { value: "D" } });
 
       const statusAfterPush = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterPush.position).toBe(3);
+      expect(statusAfterPush.position).toBe(2);
       expect(statusAfterPush.length).toBe(3);
       expect(statusAfterPush.canRedo).toBe(false);
 
@@ -1447,7 +1449,7 @@ describe("timeline component", () => {
       }
 
       const status = await t.query(api.lib.getStatus, { scope });
-      expect(status.position).toBe(3);
+      expect(status.position).toBe(2);
       expect(status.length).toBe(3);
     });
 
@@ -1461,12 +1463,12 @@ describe("timeline component", () => {
 
       await t.mutation(api.lib.undo, { scope, count: 3 });
       const statusAfterUndoAll = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndoAll.position).toBe(0);
+      expect(statusAfterUndoAll.position).toBeNull();
       expect(statusAfterUndoAll.canUndo).toBe(false);
 
       await t.mutation(api.lib.redo, { scope, count: 3 });
       const statusAfterRedoAll = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterRedoAll.position).toBe(3);
+      expect(statusAfterRedoAll.position).toBe(2);
       expect(statusAfterRedoAll.canRedo).toBe(false);
 
       const current = await t.query(api.lib.getCurrentDocument, { scope });
@@ -1485,13 +1487,13 @@ describe("timeline component", () => {
 
       const statusBefore = await t.query(api.lib.getStatus, { scope });
       expect(statusBefore.length).toBe(3);
-      expect(statusBefore.position).toBe(1);
+      expect(statusBefore.position).toBe(0);
 
       await t.mutation(api.lib.redo, { scope });
       await t.mutation(api.lib.redo, { scope });
 
       const statusAfter = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfter.position).toBe(3);
+      expect(statusAfter.position).toBe(2);
     });
   });
 
@@ -1688,17 +1690,17 @@ describe("timeline component", () => {
 
       const status = await t.query(api.lib.getStatus, { scope });
       expect(status.length).toBe(50);
-      expect(status.position).toBe(50);
+      expect(status.position).toBe(49);
 
       await t.mutation(api.lib.undo, { scope, count: 25 });
 
       const statusAfterUndo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterUndo.position).toBe(25);
+      expect(statusAfterUndo.position).toBe(24);
 
       await t.mutation(api.lib.redo, { scope, count: 10 });
 
       const statusAfterRedo = await t.query(api.lib.getStatus, { scope });
-      expect(statusAfterRedo.position).toBe(35);
+      expect(statusAfterRedo.position).toBe(34);
     });
 
     test("many checkpoints", async () => {

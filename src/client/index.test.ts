@@ -48,7 +48,7 @@ describe("Timeline client", () => {
       const status = await timeline.status(ctx, scope);
       expect(status.canUndo).toBe(true);
       expect(status.canRedo).toBe(false);
-      expect(status.position).toBe(2);
+      expect(status.position).toBe(1); // 0-indexed
       expect(status.length).toBe(2);
     });
   });
@@ -100,7 +100,7 @@ describe("Timeline client", () => {
       await timeline.push(ctx, scope, { value: "C" });
 
       const checkpoints = await timeline.listCheckpoints(ctx, scope);
-      expect(checkpoints).toEqual([{ name: "v1", position: 2 }]);
+      expect(checkpoints).toEqual([{ name: "v1", position: 1 }]); // 0-indexed
 
       const restored = await timeline.restoreCheckpoint(ctx, scope, "v1");
       expect(restored).toEqual({ value: "B" });

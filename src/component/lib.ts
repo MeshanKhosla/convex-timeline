@@ -11,14 +11,22 @@ import { mutation, query } from "./_generated/server.js";
 async function pruneAheadAndInsert(
   ctx: MutationCtx,
   scopeId: Id<"scopes">,
-  currentHead: number,
+  currentHead: number | null,
   document: unknown,
 ): Promise<number> {
-  const nodesToPrune = await ctx.db
-    .query("nodes")
-    .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
-    .filter((q) => q.gt(q.field("index"), currentHead))
-    .collect();
+  // If head is null, we're before any nodes, so prune all nodes
+  // If head is a number, prune nodes with index > head
+  const nodesToPrune =
+    currentHead === null
+      ? await ctx.db
+          .query("nodes")
+          .withIndex("by_scope", (q) => q.eq("scope", scopeId))
+          .collect()
+      : await ctx.db
+          .query("nodes")
+          .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
+          .filter((q) => q.gt(q.field("index"), currentHead))
+          .collect();
 
   const prunedPositions = new Set(nodesToPrune.map((n) => n.index));
 
@@ -42,7 +50,8 @@ async function pruneAheadAndInsert(
     }
   }
 
-  const newIndex = currentHead + 1;
+  // 0-indexed: if head is null, new index is 0; otherwise head + 1
+  const newIndex = currentHead === null ? 0 : currentHead + 1;
   await ctx.db.insert("nodes", {
     scope: scopeId,
     document,
@@ -122,7 +131,7 @@ export const push = mutation({
     if (!scope) {
       const scopeId = await ctx.db.insert("scopes", {
         name: args.scope,
-        head: 0,
+        head: null, // null = before any nodes
       });
       scope = await ctx.db.get(scopeId);
       if (!scope) throw new Error("Failed to create scope");
@@ -147,7 +156,7 @@ export const push = mutation({
 
 /**
  * Move head backward in the timeline.
- * Returns the state at the new head position, or null if at position 0.
+ * Returns the state at the new head position, or null if head becomes null.
  */
 export const undo = mutation({
   args: {
@@ -163,10 +172,15 @@ export const undo = mutation({
 
     if (!scope) return null;
 
-    const newHead = Math.max(0, scope.head - (args.count ?? 1));
+    // If head is null, already at the beginning
+    if (scope.head === null) return null;
+
+    const count = args.count ?? 1;
+    // 0-indexed: going below 0 means head becomes null
+    const newHead = scope.head - count < 0 ? null : scope.head - count;
     await ctx.db.patch(scope._id, { head: newHead });
 
-    if (newHead === 0) return null;
+    if (newHead === null) return null;
 
     const node = await ctx.db
       .query("nodes")
@@ -203,12 +217,16 @@ export const redo = mutation({
       .order("desc")
       .first();
 
-    const maxIndex = leafNode?.index ?? 0;
-    const newHead = Math.min(maxIndex, scope.head + (args.count ?? 1));
+    // No nodes exist
+    if (!leafNode) return null;
+
+    const maxIndex = leafNode.index;
+    const count = args.count ?? 1;
+    // 0-indexed: if head is null, start from -1 so adding count moves to correct position
+    const currentPosition = scope.head ?? -1;
+    const newHead = Math.min(maxIndex, currentPosition + count);
 
     await ctx.db.patch(scope._id, { head: newHead });
-
-    if (newHead === 0) return null;
 
     const node = await ctx.db
       .query("nodes")
@@ -223,7 +241,7 @@ export const redo = mutation({
 
 /**
  * Get the current document without modifying the timeline.
- * Returns null if head is at position 0 (before any document).
+ * Returns null if head is null (before any document).
  */
 export const getCurrentDocument = query({
   args: { scope: v.string() },
@@ -234,12 +252,13 @@ export const getCurrentDocument = query({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope || scope.head === 0) return null;
+    if (!scope || scope.head === null) return null;
 
+    const head = scope.head;
     const node = await ctx.db
       .query("nodes")
       .withIndex("by_scope_index", (q) =>
-        q.eq("scope", scope._id).eq("index", scope.head),
+        q.eq("scope", scope._id).eq("index", head),
       )
       .unique();
 
@@ -253,7 +272,7 @@ export const getStatus = query({
   returns: v.object({
     canUndo: v.boolean(),
     canRedo: v.boolean(),
-    position: v.number(),
+    position: v.union(v.number(), v.null()),
     length: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -263,7 +282,7 @@ export const getStatus = query({
       .unique();
 
     if (!scope) {
-      return { canUndo: false, canRedo: false, position: 0, length: 0 };
+      return { canUndo: false, canRedo: false, position: null, length: 0 };
     }
 
     const nodes = await ctx.db
@@ -271,11 +290,16 @@ export const getStatus = query({
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
       .collect();
 
-    const leafIndex = nodes.reduce((max, n) => Math.max(max, n.index), 0);
+    // 0-indexed: max index is length - 1, but we need to handle empty case
+    const leafIndex =
+      nodes.length > 0 ? Math.max(...nodes.map((n) => n.index)) : null;
 
     return {
-      canUndo: scope.head > 0,
-      canRedo: scope.head < leafIndex,
+      canUndo: scope.head !== null,
+      canRedo:
+        scope.head === null
+          ? nodes.length > 0
+          : leafIndex !== null && scope.head < leafIndex,
       position: scope.head,
       length: nodes.length,
     };
@@ -299,13 +323,14 @@ export const createCheckpoint = mutation({
       .unique();
 
     if (!scope) throw new Error(`Scope "${args.scope}" not found`);
-    if (scope.head === 0)
-      throw new Error("Cannot checkpoint at position 0 (no state)");
+    if (scope.head === null)
+      throw new Error("Cannot checkpoint when head is null (no state)");
 
+    const head = scope.head;
     const currentNode = await ctx.db
       .query("nodes")
       .withIndex("by_scope_index", (q) =>
-        q.eq("scope", scope._id).eq("index", scope.head),
+        q.eq("scope", scope._id).eq("index", head),
       )
       .unique();
 
@@ -433,7 +458,7 @@ export const deleteCheckpoint = mutation({
 });
 
 /**
- * Clear all nodes from a scope, resetting head to 0.
+ * Clear all nodes from a scope, resetting head to null.
  * Checkpoints are preserved.
  */
 export const clear = mutation({
@@ -456,7 +481,7 @@ export const clear = mutation({
       await ctx.db.delete(node._id);
     }
 
-    await ctx.db.patch(scope._id, { head: 0 });
+    await ctx.db.patch(scope._id, { head: null });
 
     return null;
   },
@@ -526,7 +551,7 @@ export const deleteScope = mutation({
 
 /**
  * Get document at a specific position without moving head.
- * Returns null for position 0 or out-of-bounds.
+ * Returns null for negative positions or out-of-bounds.
  */
 export const getDocumentAtPosition = query({
   args: {
@@ -535,7 +560,8 @@ export const getDocumentAtPosition = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    if (args.position <= 0) return null;
+    // 0-indexed: position 0 is valid, negative is not
+    if (args.position < 0) return null;
 
     const scope = await ctx.db
       .query("scopes")

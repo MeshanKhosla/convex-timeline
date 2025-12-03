@@ -81,7 +81,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           canRedo: boolean;
           canUndo: boolean;
           length: number;
-          position: number;
+          position: number | null;
         },
         Name
       >;

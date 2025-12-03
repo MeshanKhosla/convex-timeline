@@ -4,13 +4,13 @@ import { v } from "convex/values";
 export default defineSchema({
   scopes: defineTable({
     name: v.string(),
-    head: v.number(), // 0 = before any nodes
+    head: v.union(v.number(), v.null()), // null = before any nodes
   }).index("by_name", ["name"]),
 
   nodes: defineTable({
     scope: v.id("scopes"),
     document: v.any(),
-    index: v.number(), // 1-indexed position in timeline
+    index: v.number(), // 0-indexed position in timeline
   })
     .index("by_scope", ["scope"])
     .index("by_scope_index", ["scope", "index"]),

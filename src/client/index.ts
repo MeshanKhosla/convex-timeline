@@ -14,7 +14,7 @@ type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
 export interface TimelineStatus {
   canUndo: boolean;
   canRedo: boolean;
-  position: number;
+  position: number | null;
   length: number;
 }
 

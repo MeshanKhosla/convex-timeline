@@ -188,7 +188,7 @@ export const getTimelineStatus = query({
   returns: v.object({
     canUndo: v.boolean(),
     canRedo: v.boolean(),
-    position: v.number(),
+    position: v.union(v.number(), v.null()),
     length: v.number(),
   }),
   handler: async (ctx, args) => {
