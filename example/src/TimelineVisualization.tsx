@@ -92,7 +92,8 @@ export function TimelineVisualization({
             // Calculate position percentage, leaving some padding
             const positionPercent =
               maxPosition > minPosition
-                ? ((node.position - minPosition) / (maxPosition - minPosition)) *
+                ? ((node.position - minPosition) /
+                    (maxPosition - minPosition)) *
                     90 +
                   5 // 5% padding on each side
                 : 50;
@@ -129,4 +130,3 @@ export function TimelineVisualization({
     </div>
   );
 }
-

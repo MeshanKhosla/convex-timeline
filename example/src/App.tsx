@@ -71,9 +71,7 @@ export default function App() {
           {selectedId ? (
             <TodoPanel listId={selectedId} />
           ) : (
-            <div className="empty-state">
-              Select a list or create a new one
-            </div>
+            <div className="empty-state">Select a list or create a new one</div>
           )}
         </main>
       </div>
@@ -83,8 +81,12 @@ export default function App() {
 
 function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
   const todos = useQuery(api.example.getTodos, { todoListId: listId });
-  const status = useQuery(api.example.getTimelineStatus, { todoListId: listId });
-  const checkpoints = useQuery(api.example.getCheckpoints, { todoListId: listId });
+  const status = useQuery(api.example.getTimelineStatus, {
+    todoListId: listId,
+  });
+  const checkpoints = useQuery(api.example.getCheckpoints, {
+    todoListId: listId,
+  });
   const addTodo = useMutation(api.example.addTodo);
   const updateTodo = useMutation(api.example.updateTodo);
   const deleteTodo = useMutation(api.example.deleteTodo);
@@ -126,7 +128,11 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
 
   const handleSave = async () => {
     if (!editId || !editText.trim()) return;
-    await updateTodo({ todoListId: listId, todoId: editId, text: editText.trim() });
+    await updateTodo({
+      todoListId: listId,
+      todoId: editId,
+      text: editText.trim(),
+    });
     setEditId(null);
     setEditText("");
   };
@@ -153,7 +159,12 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
             disabled={!status.canUndo}
             title="Undo"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M3 10h10a5 5 0 0 1 5 5v2M3 10l5-5M3 10l5 5" />
             </svg>
           </button>
@@ -163,7 +174,12 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
             disabled={!status.canRedo}
             title="Redo"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M21 10H11a5 5 0 0 0-5 5v2M21 10l-5-5M21 10l-5 5" />
             </svg>
           </button>
@@ -221,7 +237,11 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                   >
                     Save
                   </button>
-                  <button type="button" className="cancel-btn" onClick={handleCancel}>
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={handleCancel}
+                  >
                     Cancel
                   </button>
                 </form>
@@ -242,7 +262,9 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                     </button>
                     <button
                       className="action-btn danger"
-                      onClick={() => deleteTodo({ todoListId: listId, todoId: todo.id })}
+                      onClick={() =>
+                        deleteTodo({ todoListId: listId, todoId: todo.id })
+                      }
                     >
                       Delete
                     </button>
@@ -279,13 +301,17 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                 <div className="checkpoint-actions">
                   <button
                     className="action-btn"
-                    onClick={() => restoreCheckpoint({ todoListId: listId, name })}
+                    onClick={() =>
+                      restoreCheckpoint({ todoListId: listId, name })
+                    }
                   >
                     Restore
                   </button>
                   <button
                     className="action-btn danger"
-                    onClick={() => deleteCheckpoint({ todoListId: listId, name })}
+                    onClick={() =>
+                      deleteCheckpoint({ todoListId: listId, name })
+                    }
                   >
                     Delete
                   </button>
