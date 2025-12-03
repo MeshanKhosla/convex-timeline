@@ -31,11 +31,39 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      clear: FunctionReference<
+        "mutation",
+        "internal",
+        { scope: string },
+        null,
+        Name
+      >;
       deleteCheckpoint: FunctionReference<
         "mutation",
         "internal",
         { name: string; scope: string },
         null,
+        Name
+      >;
+      deleteScope: FunctionReference<
+        "mutation",
+        "internal",
+        { scope: string },
+        null,
+        Name
+      >;
+      getAtPosition: FunctionReference<
+        "query",
+        "internal",
+        { position: number; scope: string },
+        any | null,
+        Name
+      >;
+      getCheckpoint: FunctionReference<
+        "query",
+        "internal",
+        { name: string; scope: string },
+        any | null,
         Name
       >;
       getCheckpoints: FunctionReference<

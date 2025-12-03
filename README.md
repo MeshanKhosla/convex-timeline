@@ -45,7 +45,7 @@ export const updateDocument = mutation({
   args: { docId: v.id("documents"), content: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const docTimeline = timeline.for(`doc:${args.docId}`);
+    const docTimeline = timeline.forScope(`doc:${args.docId}`);
 
     await ctx.db.patch(args.docId, { content: args.content });
     // Also push the change to the timeline scope
@@ -58,7 +58,7 @@ export const undo = mutation({
   args: { docId: v.id("documents") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const docTimeline = timeline.for(`doc:${args.docId}`);
+    const docTimeline = timeline.forScope(`doc:${args.docId}`);
 
     const content = await docTimeline.undo(ctx);
     if (content !== null) {
@@ -72,7 +72,7 @@ export const redo = mutation({
   args: { docId: v.id("documents") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const docTimeline = timeline.for(`doc:${args.docId}`);
+    const docTimeline = timeline.forScope(`doc:${args.docId}`);
 
     const content = await docTimeline.redo(ctx);
     if (content !== null) {
@@ -91,7 +91,7 @@ export const getStatus = query({
     length: v.number(),
   }),
   handler: async (ctx, args) => {
-    return await timeline.for(`doc:${args.docId}`).status(ctx);
+    return await timeline.forScope(`doc:${args.docId}`).status(ctx);
   },
 });
 ```
@@ -222,7 +222,7 @@ await timeline.deleteCheckpoint(ctx, "doc:123", "before-refactor");
 For convenience when working with a single scope:
 
 ```ts
-const docTimeline = timeline.for("doc:123");
+const docTimeline = timeline.forScope("doc:123");
 
 await docTimeline.push(ctx, newState);
 await docTimeline.undo(ctx);

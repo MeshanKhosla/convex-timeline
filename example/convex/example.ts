@@ -78,7 +78,7 @@ export const addTodo = mutation({
     await ctx.db.patch(args.todoListId, { items: newItems });
 
     // Record state in timeline
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     await todoTimeline.push(ctx, newItems);
 
     return null;
@@ -110,7 +110,7 @@ export const updateTodo = mutation({
     await ctx.db.patch(args.todoListId, { items: newItems });
 
     // Record state in timeline
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     await todoTimeline.push(ctx, newItems);
 
     return null;
@@ -132,7 +132,7 @@ export const deleteTodo = mutation({
     await ctx.db.patch(args.todoListId, { items: newItems });
 
     // Record state in timeline
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     await todoTimeline.push(ctx, newItems);
 
     return null;
@@ -147,7 +147,7 @@ export const undo = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     const state = await todoTimeline.undo(ctx);
 
     // null means we're at position 0 (no state), use empty array
@@ -167,7 +167,7 @@ export const redo = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     const state = await todoTimeline.redo(ctx);
 
     // Only update if we actually moved forward
@@ -192,7 +192,7 @@ export const getTimelineStatus = query({
     length: v.number(),
   }),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     return await todoTimeline.status(ctx);
   },
 });
@@ -206,7 +206,7 @@ export const saveCheckpoint = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     await todoTimeline.checkpoint(ctx, args.name);
     return null;
   },
@@ -219,7 +219,7 @@ export const restoreCheckpoint = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     const state = await todoTimeline.restoreCheckpoint(ctx, args.name);
 
     await ctx.db.patch(args.todoListId, {
@@ -236,7 +236,7 @@ export const getCheckpoints = query({
   },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     return await todoTimeline.getCheckpoints(ctx);
   },
 });
@@ -248,7 +248,7 @@ export const deleteCheckpoint = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const todoTimeline = timeline.for(`todos:${args.todoListId}`);
+    const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     await todoTimeline.deleteCheckpoint(ctx, args.name);
     return null;
   },

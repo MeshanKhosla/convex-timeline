@@ -204,12 +204,12 @@ export class Timeline<TimelineScope extends string = string> {
    *
    * @example
    * ```ts
-   * const docTimeline = timeline.for("doc:123");
+   * const docTimeline = timeline.forScope("doc:123");
    * await docTimeline.push(ctx, { text: "Hello" });
    * await docTimeline.undo(ctx);
    * ```
    */
-  for<Scope extends TimelineScope>(scope: Scope) {
+  forScope<Scope extends TimelineScope>(scope: Scope) {
     return {
       push: (ctx: MutationCtx, state: unknown) => this.push(ctx, scope, state),
       undo: (ctx: MutationCtx, count?: number) => this.undo(ctx, scope, count),

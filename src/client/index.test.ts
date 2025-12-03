@@ -56,7 +56,7 @@ describe("Timeline client", () => {
   test("scoped facade works correctly", async () => {
     const t = initConvexTest(schema);
     const timeline = new Timeline(components.timeline);
-    const scoped = timeline.for("test-scope");
+    const scoped = timeline.forScope("test-scope");
 
     await t.run(async (ctx) => {
       await scoped.push(ctx, { value: "A" });
@@ -131,7 +131,7 @@ describe("Timeline client", () => {
       expect(current).toEqual({ value: "C" });
 
       // Test scoped facade
-      const scoped = timeline.for(scope);
+      const scoped = timeline.forScope(scope);
       const scopedCheckpointData = await scoped.getCheckpoint(ctx, "v1");
       expect(scopedCheckpointData).toEqual({ value: "B" });
     });
