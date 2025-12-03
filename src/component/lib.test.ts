@@ -240,6 +240,130 @@ describe("timeline component", () => {
     });
   });
 
+  describe("clear mutation", () => {
+    /**
+     * **Feature: timeline-improvements, Property 1: Clear resets timeline to empty state**
+     * *For any* scope with any number of nodes at any head position, calling clear should result in:
+     * - status.length === 0
+     * - status.position === 0
+     * - status.canUndo === false
+     * - status.canRedo === false
+     * **Validates: Requirements 2.1, 2.2**
+     */
+    test("Property 1: Clear resets timeline to empty state", async () => {
+      const ITERATIONS = 20;
+
+      for (let i = 0; i < ITERATIONS; i++) {
+        const t = initConvexTest();
+        const scope = `test-scope-${i}`;
+
+        // Generate random number of pushes (1-10)
+        const numPushes = Math.floor(Math.random() * 10) + 1;
+        for (let j = 0; j < numPushes; j++) {
+          await t.mutation(api.lib.push, {
+            scope,
+            document: { value: `state-${j}` },
+          });
+        }
+
+        // Optionally perform some undos (0 to numPushes)
+        const numUndos = Math.floor(Math.random() * (numPushes + 1));
+        if (numUndos > 0) {
+          await t.mutation(api.lib.undo, { scope, count: numUndos });
+        }
+
+        // Clear the timeline
+        await t.mutation(api.lib.clear, { scope });
+
+        // Verify the property
+        const status = await t.query(api.lib.getStatus, { scope });
+        expect(status.length).toBe(0);
+        expect(status.position).toBe(0);
+        expect(status.canUndo).toBe(false);
+        expect(status.canRedo).toBe(false);
+      }
+    });
+
+    /**
+     * **Feature: timeline-improvements, Property 2: Clear preserves checkpoints**
+     * *For any* scope with checkpoints, calling clear should not affect the checkpoint list -
+     * getCheckpoints should return the same names before and after clear.
+     * **Validates: Requirements 2.4**
+     */
+    test("Property 2: Clear preserves checkpoints", async () => {
+      const ITERATIONS = 20;
+
+      for (let i = 0; i < ITERATIONS; i++) {
+        const t = initConvexTest();
+        const scope = `test-scope-${i}`;
+
+        // Generate random number of pushes (1-5)
+        const numPushes = Math.floor(Math.random() * 5) + 1;
+        for (let j = 0; j < numPushes; j++) {
+          await t.mutation(api.lib.push, {
+            scope,
+            document: { value: `state-${j}` },
+          });
+        }
+
+        // Create random number of checkpoints (1-3)
+        const numCheckpoints = Math.floor(Math.random() * 3) + 1;
+        const checkpointNames: string[] = [];
+        for (let j = 0; j < numCheckpoints; j++) {
+          const name = `checkpoint-${j}`;
+          checkpointNames.push(name);
+          await t.mutation(api.lib.checkpoint, { scope, name });
+        }
+
+        // Get checkpoints before clear
+        const checkpointsBefore = await t.query(api.lib.getCheckpoints, { scope });
+
+        // Clear the timeline
+        await t.mutation(api.lib.clear, { scope });
+
+        // Get checkpoints after clear
+        const checkpointsAfter = await t.query(api.lib.getCheckpoints, { scope });
+
+        // Verify the property - checkpoints should be preserved
+        expect(checkpointsAfter.sort()).toEqual(checkpointsBefore.sort());
+      }
+    });
+
+    test("clear on non-existent scope returns without error", async () => {
+      const t = initConvexTest();
+      const result = await t.mutation(api.lib.clear, { scope: "non-existent" });
+      expect(result).toBeNull();
+    });
+
+    test("clear followed by push works correctly", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      // Build timeline
+      await t.mutation(api.lib.push, { scope, document: { value: "A" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "B" } });
+
+      // Clear
+      await t.mutation(api.lib.clear, { scope });
+
+      // Verify cleared
+      const statusAfterClear = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterClear.length).toBe(0);
+      expect(statusAfterClear.position).toBe(0);
+
+      // Push new state
+      await t.mutation(api.lib.push, { scope, document: { value: "C" } });
+
+      // Verify new state
+      const statusAfterPush = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterPush.length).toBe(1);
+      expect(statusAfterPush.position).toBe(1);
+
+      const current = await t.query(api.lib.getCurrent, { scope });
+      expect(current).toEqual({ value: "C" });
+    });
+  });
+
   describe("edge cases", () => {
     test("undo on non-existent scope returns null", async () => {
       const t = initConvexTest();
