@@ -1,7 +1,17 @@
-# Example app
+# Example: Todo App with Undo/Redo
 
-Components need an app that uses them in order to run codegen.
+A todo list app demonstrating convex-timeline for undo/redo and checkpoints.
 
-An example app is also useful for testing and documentation.
+## Running
 
-Run the example and convex commands from the root of the repo.
+```sh
+npm install
+npm run dev
+```
+
+## Structure
+
+- `convex/` - Convex functions using the timeline component
+- `src/` - React frontend
+
+See [convex/](./convex) for the timeline integration code.
