@@ -24,31 +24,72 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     lib: {
-      add: FunctionReference<
+      checkpoint: FunctionReference<
         "mutation",
         "internal",
-        { targetId: string; text: string; userId: string },
-        string,
+        { name: string; scope: string },
+        null,
         Name
       >;
-      list: FunctionReference<
+      deleteCheckpoint: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; scope: string },
+        null,
+        Name
+      >;
+      getCheckpoints: FunctionReference<
         "query",
         "internal",
-        { limit?: number; targetId: string },
-        Array<{
-          _creationTime: number;
-          _id: string;
-          targetId: string;
-          text: string;
-          userId: string;
-        }>,
+        { scope: string },
+        Array<string>,
         Name
       >;
-      translate: FunctionReference<
-        "action",
+      getCurrent: FunctionReference<
+        "query",
         "internal",
-        { baseUrl: string; commentId: string },
-        string,
+        { scope: string },
+        any | null,
+        Name
+      >;
+      getStatus: FunctionReference<
+        "query",
+        "internal",
+        { scope: string },
+        {
+          canRedo: boolean;
+          canUndo: boolean;
+          length: number;
+          position: number;
+        },
+        Name
+      >;
+      push: FunctionReference<
+        "mutation",
+        "internal",
+        { document: any; maxNodes?: number; scope: string },
+        null,
+        Name
+      >;
+      redo: FunctionReference<
+        "mutation",
+        "internal",
+        { count?: number; scope: string },
+        any | null,
+        Name
+      >;
+      restoreCheckpoint: FunctionReference<
+        "mutation",
+        "internal",
+        { maxNodes?: number; name: string; scope: string },
+        any,
+        Name
+      >;
+      undo: FunctionReference<
+        "mutation",
+        "internal",
+        { count?: number; scope: string },
+        any | null,
         Name
       >;
     };

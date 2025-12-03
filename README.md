@@ -1,104 +1,23 @@
-# Convex Component Template
-
-This is a Convex component, ready to be published on npm.
-
-To create your own component:
-
-1. Write code in src/component for your component. Component-specific tables,
-   queries, mutations, and actions go here.
-1. Write code in src/client for the Class that interfaces with the component.
-   This is the bridge your users will access to get information into and out of
-   your component
-1. Write example usage in example/convex/example.ts.
-1. Delete the text in this readme until `---` and flesh out the README.
-1. Publish to npm with `npm run alpha` or `npm run release`.
-
-To develop your component run a dev process in the example project:
-
-```sh
-npm i
-npm run dev
-```
-
-`npm i` will do the install and an initial build. `npm run dev` will start a
-file watcher to re-build the component, as well as the example project frontend
-and backend, which does codegen and installs the component.
-
-Modify the schema and index files in src/component/ to define your component.
-
-Write a client for using this component in src/client/index.ts.
-
-If you won't be adding frontend code (e.g. React components) to this component
-you can delete the following:
-
-- "./react" exports in package.json
-- the "src/react/" directory
-
-If you will be adding frontend code, add a peer dependency on React in
-package.json.
-
-### Component Directory structure
-
-```
-.
-├── README.md           documentation of your component
-├── package.json        component name, version number, other metadata
-├── package-lock.json   Components are like libraries, package-lock.json
-│                       is .gitignored and ignored by consumers.
-├── src
-│   ├── component/
-│   │   ├── _generated/ Files here are generated for the component.
-│   │   ├── convex.config.ts  Name your component here and use other components
-│   │   ├── lib.ts    Define functions here and in new files in this directory
-│   │   └── schema.ts   schema specific to this component
-│   ├── client/index.ts "Thick" client code goes here.
-│   └── react/          Code intended to be used on the frontend goes here.
-│       │               Your are free to delete this if this component
-│       │               does not provide code.
-│       └── index.ts
-├── example/            example Convex app that uses this component
-│   └── convex/
-│       ├── _generated/       Files here are generated for the example app.
-│       ├── convex.config.ts  Imports and uses this component
-│       ├── myFunctions.ts    Functions that use the component
-│       └── schema.ts         Example app schema
-└── dist/               Publishing artifacts will be created here.
-```
-
----
-
 # Convex Timeline
 
-[![npm version](https://badge.fury.io/js/@example%2Ftimeline.svg)](https://badge.fury.io/js/@example%2Ftimeline)
+A Convex component for undo/redo state management with named checkpoints.
 
-<!-- START: Include on https://convex.dev/components -->
+## Overview
 
-- [ ] What is some compelling syntax as a hook?
-- [ ] Why should you use this component?
-- [ ] Links to docs / other resources?
+Timeline maintains a linear history of state snapshots organized by scope. It
+provides:
 
-Found a bug? Feature request?
-[File it here](https://github.com/MeshanKhosla/convex-timeline/issues).
-
-## Pre-requisite: Convex
-
-You'll need an existing Convex project to use the component. Convex is a hosted
-backend platform, including a database, serverless functions, and a ton more you
-can learn about [here](https://docs.convex.dev/get-started).
-
-Run `npm create convex` or follow any of the
-[quickstarts](https://docs.convex.dev/home) to set one up.
+- **Undo/Redo**: Navigate backward and forward through state history
+- **Checkpoints**: Named snapshots that persist independently of the timeline
+- **Automatic Pruning**: Configurable limits to prevent unbounded growth
 
 ## Installation
-
-Install the component package:
 
 ```sh
 npm install convex-timeline
 ```
 
-Create a `convex.config.ts` file in your app's `convex/` folder and install the
-component by calling `use`:
+Add the component to your Convex app:
 
 ```ts
 // convex/convex.config.ts
@@ -111,47 +30,303 @@ app.use(timeline);
 export default app;
 ```
 
-## Usage
+## Quick Start
 
 ```ts
+// convex/example.ts
+import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { Timeline } from "convex-timeline";
+import { v } from "convex/values";
 
-const timeline = new Timeline(components.timeline, {
-  ...options,
+const timeline = new Timeline(components.timeline);
+
+export const updateDocument = mutation({
+  args: { docId: v.id("documents"), content: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const docTimeline = timeline.for(`doc:${args.docId}`);
+
+    await ctx.db.patch(args.docId, { content: args.content });
+    // Also push the change to the timeline scope
+    await docTimeline.push(ctx, args.content);
+    return null;
+  },
+});
+
+export const undo = mutation({
+  args: { docId: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const docTimeline = timeline.for(`doc:${args.docId}`);
+
+    const content = await docTimeline.undo(ctx);
+    if (content !== null) {
+      await ctx.db.patch(args.docId, { content: content as string });
+    }
+    return null;
+  },
+});
+
+export const redo = mutation({
+  args: { docId: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const docTimeline = timeline.for(`doc:${args.docId}`);
+
+    const content = await docTimeline.redo(ctx);
+    if (content !== null) {
+      await ctx.db.patch(args.docId, { content: content as string });
+    }
+    return null;
+  },
+});
+
+export const getStatus = query({
+  args: { docId: v.id("documents") },
+  returns: v.object({
+    canUndo: v.boolean(),
+    canRedo: v.boolean(),
+    position: v.number(),
+    length: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    return await timeline.for(`doc:${args.docId}`).status(ctx);
+  },
 });
 ```
 
-See more example usage in [example.ts](./example/convex/example.ts).
+## API Reference
 
-### HTTP Routes
-
-You can register HTTP routes for the component to expose HTTP endpoints:
+### Constructor
 
 ```ts
-import { httpRouter } from "convex/server";
-import { components } from "./_generated/api";
-import { timeline } from "./example.js";
+// Unlimited history (default)
+const timeline = new Timeline(components.timeline);
 
-const http = httpRouter();
-
-// Register HTTP routes for the component
-timeline.registerRoutes(http, {
-  path: "/comments/last", // optional, defaults to "/comments/last"
+// Limit all scopes to 100 nodes
+const timeline = new Timeline(components.timeline, {
+  maxNodesPerScope: 100,
 });
 
-export default http;
+// Different limits by prefix (longest matching prefix wins)
+const timeline = new Timeline(components.timeline, {
+  maxNodesPerScope: {
+    "doc:": 200, // matches doc:123, doc:456, etc.
+    "scratch:": 50, // matches scratch:abc, scratch:xyz, etc.
+  },
+});
 ```
 
-This will expose a GET endpoint that returns the most recent comment as JSON.
-The endpoint requires a `targetId` query parameter. See
-[http.ts](./example/convex/http.ts) for a complete example.
+Options:
 
-<!-- END: Include on https://convex.dev/components -->
+- `maxNodesPerScope`: Maximum nodes to retain per scope. When a push would
+  exceed this limit, the oldest nodes are pruned to make room. Can be a number
+  (applies to all scopes) or a record mapping scope prefixes to limits. When
+  using a record, the longest matching prefix determines the limit.
 
-Run the example:
+### Core Methods
+
+#### `push(ctx, scope, state)`
+
+Push a new state onto the timeline. If the head is not at the leaf (after undo),
+nodes ahead of head are pruned first.
+
+```ts
+await timeline.push(ctx, "doc:123", { text: "Hello" });
+```
+
+#### `undo(ctx, scope, count?)`
+
+Move head backward. Returns the state at the new position, or `null` if at
+position 0.
+
+```ts
+const previousState = await timeline.undo(ctx, "doc:123");
+const twoBack = await timeline.undo(ctx, "doc:123", 2);
+```
+
+#### `redo(ctx, scope, count?)`
+
+Move head forward. Returns the state at the new position, or `null` if already
+at leaf.
+
+```ts
+const nextState = await timeline.redo(ctx, "doc:123");
+```
+
+#### `current(ctx, scope)`
+
+Get the current state without modifying the timeline.
+
+```ts
+const state = await timeline.current(ctx, "doc:123");
+```
+
+#### `status(ctx, scope)`
+
+Get timeline status for UI state.
+
+```ts
+const { canUndo, canRedo, position, length } = await timeline.status(
+  ctx,
+  "doc:123",
+);
+```
+
+### Checkpoint Methods
+
+Checkpoints are named snapshots stored independently of the timeline. They
+persist even when nodes are pruned.
+
+#### `checkpoint(ctx, scope, name)`
+
+Save the current state as a named checkpoint.
+
+```ts
+await timeline.checkpoint(ctx, "doc:123", "before-refactor");
+```
+
+#### `restoreCheckpoint(ctx, scope, name)`
+
+Restore a checkpoint by pushing its state as a new node. This is
+non-destructive - you can undo the restore.
+
+```ts
+const state = await timeline.restoreCheckpoint(
+  ctx,
+  "doc:123",
+  "before-refactor",
+);
+```
+
+#### `getCheckpoints(ctx, scope)`
+
+List all checkpoint names for a scope.
+
+```ts
+const names = await timeline.getCheckpoints(ctx, "doc:123");
+// ["before-refactor", "v1", "v2"]
+```
+
+#### `deleteCheckpoint(ctx, scope, name)`
+
+Delete a checkpoint.
+
+```ts
+await timeline.deleteCheckpoint(ctx, "doc:123", "before-refactor");
+```
+
+### Scoped Facade
+
+For convenience when working with a single scope:
+
+```ts
+const docTimeline = timeline.for("doc:123");
+
+await docTimeline.push(ctx, newState);
+await docTimeline.undo(ctx);
+await docTimeline.checkpoint(ctx, "v1");
+```
+
+## Terminology
+
+| Term       | Description                               |
+| ---------- | ----------------------------------------- |
+| Node       | A state snapshot in the timeline          |
+| Head       | Current position (cursor) in the timeline |
+| Root       | First node (position 1)                   |
+| Leaf       | Most recent node                          |
+| Prune      | Remove nodes ahead of head when pushing   |
+| Checkpoint | Named snapshot independent of timeline    |
+
+## Behavior
+
+### Timeline Structure
+
+```
+Initial state after three pushes:
+
+    [ A ] ----> [ B ] ----> [ C ]
+      1           2           3
+                             head
+
+After undo (head moves back, C still exists):
+
+    [ A ] ----> [ B ] ----> [ C ]
+      1           2           3
+                 head
+
+After push(D) (C is pruned, D takes its place):
+
+    [ A ] ----> [ B ] ----> [ D ]
+      1           2           3
+                             head
+```
+
+### Checkpoints
+
+Checkpoints are stored separately from the timeline and persist through pruning:
+
+```
+    [ A ] ----> [ B ] ----> [ C ]
+                             head
+                              |
+                  checkpoint("v1") saves C's state
+                              |
+                              v
+                   +------------------+
+                   | Checkpoint Store |
+                   | "v1" -> C        |
+                   +------------------+
+
+Even after C is pruned, checkpoint "v1" still holds C's state.
+```
+
+### Restoring Checkpoints
+
+Restoring a checkpoint pushes that state as a new node. This means you can undo
+a restore to get back to where you were before:
+
+```
+1. Create checkpoint "v1" at C:
+
+    [ A ] ----> [ B ] ----> [ C ]       Checkpoints: { "v1": C }
+                            head
+
+2. Push more states:
+
+    [ A ] ----> [ B ] ----> [ C ] ----> [ D ] ----> [ E ]
+                                                    head
+
+3. Restore checkpoint "v1" (pushes C as new node):
+
+    [ A ] ----> [ B ] ----> [ C ] ----> [ D ] ----> [ E ] ----> [ C' ]
+                                                                head
+
+4. Undo the restore (back to E):
+
+    [ A ] ----> [ B ] ----> [ C ] ----> [ D ] ----> [ E ] ----> [ C' ]
+                                                    head
+```
+
+### Return Values
+
+- `null` from `undo()`/`redo()`/`current()` means position 0 (before any state)
+- If `status().canUndo` is true, `undo()` will return non-null
+- If `status().canRedo` is true, `redo()` will return non-null
+
+## Example
+
+See the [example](./example) directory for a complete todo app with undo/redo
+and checkpoints.
 
 ```sh
-npm i
+cd example
+npm install
 npm run dev
 ```
+
+## License
+
+MIT

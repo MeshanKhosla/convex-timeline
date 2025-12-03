@@ -1,5 +1,16 @@
-import { defineSchema } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
 export default defineSchema({
-  // Any tables used by the example app go here.
+  todoLists: defineTable({
+    name: v.string(),
+    // Store todos as an array in a single document - makes undo/redo trivial
+    items: v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        completed: v.boolean(),
+      }),
+    ),
+  }),
 });

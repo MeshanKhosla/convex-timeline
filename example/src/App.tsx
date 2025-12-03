@@ -1,203 +1,273 @@
 import "./App.css";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useState } from "react";
+import { Id } from "../convex/_generated/dataModel";
 
-// Fake blog posts (not in database)
-const blogPosts = [
-  {
-    id: "blog-post-1",
-    title: "Getting Started with Convex Components",
-    content:
-      "Convex components are a powerful way to build reusable functionality that can be shared across different applications. In this post, we'll explore how to create and use components in your Convex applications.",
-    author: "Jane Doe",
-    date: "2024-01-15",
-  },
-  {
-    id: "blog-post-2",
-    title: "Building Scalable Comment Systems",
-    content:
-      "Comments are a fundamental feature of many web applications. Learn how to build a scalable comment system using Convex components that can handle thousands of comments efficiently.",
-    author: "John Smith",
-    date: "2024-01-20",
-  },
-];
+export default function App() {
+  const todoLists = useQuery(api.example.getTodoLists);
+  const createList = useMutation(api.example.createTodoList);
+  const [newListName, setNewListName] = useState("");
+  const [selectedId, setSelectedId] = useState<Id<"todoLists"> | null>(null);
 
-function BlogPostComments({ postId }: { postId: string }) {
-  const comments = useQuery(api.example.list, { targetId: postId });
-  const addComment = useMutation(api.example.add);
-  const translateComment = useAction(api.example.translateComment);
-  const [commentText, setCommentText] = useState("");
-
-  const handleAddComment = () => {
-    if (commentText.trim()) {
-      addComment({ text: commentText, targetId: postId });
-      setCommentText("");
-    }
-  };
-
-  const handleTranslateComment = async (commentId: string) => {
-    await translateComment({ commentId });
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) return;
+    const id = await createList({ name: newListName.trim() });
+    setNewListName("");
+    setSelectedId(id);
   };
 
   return (
-    <div
-      style={{
-        marginTop: "1.5rem",
-        padding: "1rem",
-        border: "1px solid rgba(128, 128, 128, 0.3)",
-        borderRadius: "8px",
-      }}
-    >
-      <h4 style={{ marginTop: 0, marginBottom: "1rem" }}>
-        Comments ({comments?.length ?? 0})
-      </h4>
-      <div style={{ marginBottom: "1rem" }}>
-        <input
-          type="text"
-          value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
-          placeholder="Enter a comment"
-          style={{ marginRight: "0.5rem", padding: "0.5rem", width: "70%" }}
-          onKeyPress={(e) => e.key === "Enter" && handleAddComment()}
-        />
-        <button onClick={handleAddComment}>Add Comment</button>
+    <div className="app">
+      <header className="header">
+        <h1>Todo Lists</h1>
+        <p>With undo/redo powered by Timeline</p>
+      </header>
+
+      <div className="layout">
+        <aside className="sidebar">
+          <span className="sidebar-header">Lists</span>
+
+          <form className="create-form" onSubmit={handleCreate}>
+            <input
+              type="text"
+              placeholder="New list name..."
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+            />
+            <button type="submit">Create List</button>
+          </form>
+
+          <div className="lists">
+            {todoLists?.map((list) => (
+              <button
+                key={list._id}
+                className={`list-button ${selectedId === list._id ? "active" : ""}`}
+                onClick={() => setSelectedId(list._id)}
+              >
+                {list.name}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="main-panel">
+          {selectedId ? (
+            <TodoPanel listId={selectedId} />
+          ) : (
+            <div className="empty-state">
+              Select a list or create a new one
+            </div>
+          )}
+        </main>
       </div>
-      <ul style={{ textAlign: "left", listStyle: "none", padding: 0 }}>
-        {comments?.map((comment) => (
-          <li
-            key={comment._id}
-            style={{
-              marginBottom: "0.5rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.5rem",
-              backgroundColor: "rgba(128, 128, 128, 0.1)",
-              borderRadius: "4px",
-            }}
-          >
-            <span style={{ flex: 1 }}>{comment.text}</span>
-            <button
-              onClick={() => handleTranslateComment(comment._id)}
-              style={{
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.75rem",
-                backgroundColor: "#ff9800",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              🏴‍☠️ Translate to Pirate Talk
-            </button>
-          </li>
-        ))}
-        {comments?.length === 0 && (
-          <li
-            style={{ color: "rgba(128, 128, 128, 0.8)", fontStyle: "italic" }}
-          >
-            No comments yet. Be the first to comment!
-          </li>
-        )}
-      </ul>
     </div>
   );
 }
 
-function App() {
-  // Construct the HTTP endpoint URL
-  // Replace .convex.cloud with .convex.site for HTTP endpoints
-  const convexUrl = import.meta.env.VITE_CONVEX_URL.replace(".cloud", ".site");
+function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
+  const todos = useQuery(api.example.getTodos, { todoListId: listId });
+  const status = useQuery(api.example.getTimelineStatus, { todoListId: listId });
+  const checkpoints = useQuery(api.example.getCheckpoints, { todoListId: listId });
+  const addTodo = useMutation(api.example.addTodo);
+  const updateTodo = useMutation(api.example.updateTodo);
+  const deleteTodo = useMutation(api.example.deleteTodo);
+  const undo = useMutation(api.example.undo);
+  const redo = useMutation(api.example.redo);
+  const saveCheckpoint = useMutation(api.example.saveCheckpoint);
+  const restoreCheckpoint = useMutation(api.example.restoreCheckpoint);
+  const deleteCheckpoint = useMutation(api.example.deleteCheckpoint);
+
+  const [newTodo, setNewTodo] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [checkpointName, setCheckpointName] = useState("");
+
+  if (todos === undefined || status === undefined) {
+    return (
+      <div className="loading">
+        <div className="spinner" />
+        Loading...
+      </div>
+    );
+  }
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+    await addTodo({ todoListId: listId, text: newTodo.trim() });
+    setNewTodo("");
+  };
+
+  const handleToggle = (id: string, completed: boolean) => {
+    updateTodo({ todoListId: listId, todoId: id, completed: !completed });
+  };
+
+  const handleEdit = (id: string, text: string) => {
+    setEditId(id);
+    setEditText(text);
+  };
+
+  const handleSave = async () => {
+    if (!editId || !editText.trim()) return;
+    await updateTodo({ todoListId: listId, todoId: editId, text: editText.trim() });
+    setEditId(null);
+    setEditText("");
+  };
+
+  const handleCancel = () => {
+    setEditId(null);
+    setEditText("");
+  };
+
+  const handleSaveCheckpoint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkpointName.trim()) return;
+    await saveCheckpoint({ todoListId: listId, name: checkpointName.trim() });
+    setCheckpointName("");
+  };
 
   return (
-    <>
-      <h1>Example App</h1>
-      <div className="card">
-        {blogPosts.map((post) => (
-          <div
-            key={post.id}
-            style={{
-              marginBottom: "2rem",
-              padding: "1.5rem",
-              border: "1px solid rgba(128, 128, 128, 0.3)",
-              borderRadius: "8px",
-            }}
+    <div className="todo-panel">
+      <div className="todo-toolbar">
+        <h2 className="todo-title">Todos</h2>
+        <div className="toolbar-actions">
+          <span className="position-indicator">
+            {status.position} / {status.length}
+          </span>
+          <button
+            className="toolbar-btn"
+            onClick={() => undo({ todoListId: listId })}
+            disabled={!status.canUndo}
           >
-            <h2 style={{ marginTop: 0 }}>{post.title}</h2>
-            <div
-              style={{
-                marginBottom: "0.5rem",
-                color: "rgba(128, 128, 128, 0.8)",
-                fontSize: "0.9rem",
-              }}
-            >
-              By {post.author} • {post.date}
-            </div>
-            <p style={{ lineHeight: "1.6", marginBottom: "1rem" }}>
-              {post.content}
-            </p>
-            <BlogPostComments postId={post.id} />
-          </div>
-        ))}
-        <div
-          style={{
-            marginTop: "1.5rem",
-            padding: "1rem",
-            backgroundColor: "rgba(128, 128, 128, 0.1)",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>HTTP Endpoint Demo</h3>
-          <p style={{ fontSize: "0.9rem", marginBottom: "0.5rem" }}>
-            The component exposes an HTTP endpoint to get the latest comment:
-          </p>
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 10h10a5 5 0 0 1 5 5v2M3 10l5-5M3 10l5 5" />
+            </svg>
+            Undo
+          </button>
+          <button
+            className="toolbar-btn"
+            onClick={() => redo({ todoListId: listId })}
+            disabled={!status.canRedo}
           >
-            {blogPosts.map((post) => {
-              const httpUrl =
-                convexUrl +
-                `/comments/last?targetId=${encodeURIComponent(post.id)}`;
-              return (
-                <a
-                  key={post.id}
-                  href={httpUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block",
-                    padding: "0.5rem 1rem",
-                    backgroundColor: "#007bff",
-                    color: "white",
-                    textDecoration: "none",
-                    borderRadius: "4px",
-                    fontSize: "0.9rem",
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10H11a5 5 0 0 0-5 5v2M21 10l-5-5M21 10l-5 5" />
+            </svg>
+            Redo
+          </button>
+        </div>
+      </div>
+
+      <form className="add-form" onSubmit={handleAdd}>
+        <input
+          type="text"
+          placeholder="Add a new todo..."
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+        />
+        <button type="submit">Add</button>
+      </form>
+
+      <div className="todo-list">
+        {todos.length === 0 ? (
+          <div className="todo-empty">No todos yet</div>
+        ) : (
+          todos.map((todo) => (
+            <div key={todo.id} className="todo-item">
+              <input
+                type="checkbox"
+                className="todo-checkbox"
+                checked={todo.completed}
+                onChange={() => handleToggle(todo.id, todo.completed)}
+              />
+
+              {editId === todo.id ? (
+                <form
+                  className="edit-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSave();
                   }}
                 >
-                  {post.title} - HTTP Endpoint
-                </a>
-              );
-            })}
-          </div>
-          <p style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.5rem" }}>
-            See <code>example/convex/http.ts</code> for the HTTP route
-            configuration
-          </p>
-        </div>
-        <p>
-          See <code>example/convex/example.ts</code> for all the ways to use
-          this component
-        </p>
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    autoFocus
+                  />
+                  <button type="submit" className="save-btn">Save</button>
+                  <button type="button" className="cancel-btn" onClick={handleCancel}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <span
+                    className={`todo-text ${todo.completed ? "completed" : ""}`}
+                    onDoubleClick={() => handleEdit(todo.id, todo.text)}
+                  >
+                    {todo.text}
+                  </span>
+                  <div className="todo-actions">
+                    <button
+                      className="action-btn"
+                      onClick={() => handleEdit(todo.id, todo.text)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="action-btn danger"
+                      onClick={() => deleteTodo({ todoListId: listId, todoId: todo.id })}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))
+        )}
       </div>
-    </>
+
+      <div className="checkpoints-section">
+        <h3 className="checkpoints-title">Checkpoints</h3>
+        <form className="checkpoint-form" onSubmit={handleSaveCheckpoint}>
+          <input
+            type="text"
+            placeholder="Checkpoint name..."
+            value={checkpointName}
+            onChange={(e) => setCheckpointName(e.target.value)}
+            disabled={status.position === 0}
+          />
+          <button type="submit" disabled={status.position === 0}>
+            Save
+          </button>
+        </form>
+        {checkpoints && checkpoints.length > 0 && (
+          <div className="checkpoint-list">
+            {checkpoints.map((name) => (
+              <div key={name} className="checkpoint-item">
+                <span className="checkpoint-name">{name}</span>
+                <div className="checkpoint-actions">
+                  <button
+                    className="action-btn"
+                    onClick={() => restoreCheckpoint({ todoListId: listId, name })}
+                  >
+                    Restore
+                  </button>
+                  <button
+                    className="action-btn danger"
+                    onClick={() => deleteCheckpoint({ todoListId: listId, name })}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
-
-export default App;
