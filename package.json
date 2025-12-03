@@ -27,6 +27,8 @@
     "build": "tsc --project ./tsconfig.build.json",
     "typecheck": "tsc --noEmit && tsc -p example && tsc -p example/convex",
     "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "all": "run-p -r 'dev:*' 'test:watch'",
     "test": "vitest run --typecheck",
     "test:watch": "vitest --typecheck --clearScreen false",

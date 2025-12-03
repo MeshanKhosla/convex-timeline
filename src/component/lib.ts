@@ -179,10 +179,10 @@ export const redo = mutation({
 });
 
 /**
- * Get the current state without modifying the timeline.
- * Returns null if head is at position 0 (before any state).
+ * Get the current document without modifying the timeline.
+ * Returns null if head is at position 0 (before any document).
  */
-export const getCurrent = query({
+export const getCurrentDocument = query({
   args: { scope: v.string() },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
@@ -243,7 +243,7 @@ export const getStatus = query({
  * Create a named checkpoint of the current state.
  * Checkpoints persist independently of the timeline through pruning.
  */
-export const checkpoint = mutation({
+export const createCheckpoint = mutation({
   args: {
     scope: v.string(),
     name: v.string(),
@@ -338,10 +338,10 @@ export const restoreCheckpoint = mutation({
   },
 });
 
-/** List all checkpoint names for a scope. */
-export const getCheckpoints = query({
+/** List all checkpoints for a scope with their names and positions. */
+export const listCheckpoints = query({
   args: { scope: v.string() },
-  returns: v.array(v.string()),
+  returns: v.array(v.object({ name: v.string(), position: v.number() })),
   handler: async (ctx, args) => {
     const scope = await ctx.db
       .query("scopes")
@@ -355,7 +355,7 @@ export const getCheckpoints = query({
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
       .collect();
 
-    return checkpoints.map((c) => c.name);
+    return checkpoints.map((c) => ({ name: c.name, position: c.position }));
   },
 });
 
@@ -418,7 +418,7 @@ export const clear = mutation({
 });
 
 /** Get a checkpoint's document without restoring it. */
-export const getCheckpoint = query({
+export const getCheckpointDocument = query({
   args: {
     scope: v.string(),
     name: v.string(),
@@ -483,7 +483,7 @@ export const deleteScope = mutation({
  * Get document at a specific position without moving head.
  * Returns null for position 0 or out-of-bounds.
  */
-export const getAtPosition = query({
+export const getDocumentAtPosition = query({
   args: {
     scope: v.string(),
     position: v.number(),
@@ -511,10 +511,10 @@ export const getAtPosition = query({
 });
 
 /**
- * Get all nodes for a scope with their positions.
+ * List all nodes for a scope with their positions.
  * Returns array of { position, document } sorted by position.
  */
-export const getAllNodes = query({
+export const listNodes = query({
   args: { scope: v.string() },
   returns: v.array(
     v.object({
@@ -541,35 +541,5 @@ export const getAllNodes = query({
         document: node.document,
       }))
       .sort((a, b) => a.position - b.position);
-  },
-});
-
-/**
- * Get positions that have checkpoints.
- * Returns an array of positions that have checkpoints.
- */
-export const getCheckpointPositions = query({
-  args: { scope: v.string() },
-  returns: v.array(v.number()),
-  handler: async (ctx, args) => {
-    const scope = await ctx.db
-      .query("scopes")
-      .withIndex("by_name", (q) => q.eq("name", args.scope))
-      .unique();
-
-    if (!scope) return [];
-
-    const checkpoints = await ctx.db
-      .query("checkpoints")
-      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
-      .collect();
-
-    // Get unique positions from checkpoints
-    const positions = new Set<number>();
-    for (const checkpoint of checkpoints) {
-      positions.add(checkpoint.position);
-    }
-
-    return Array.from(positions);
   },
 });

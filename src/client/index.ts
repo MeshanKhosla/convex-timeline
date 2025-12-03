@@ -18,6 +18,11 @@ export interface TimelineStatus {
   length: number;
 }
 
+export interface Checkpoint {
+  name: string;
+  position: number;
+}
+
 /**
  * Timeline component for undo/redo state management.
  *
@@ -98,12 +103,12 @@ export class Timeline<TimelineScope extends string = string> {
     return await ctx.runMutation(this.component.lib.redo, { scope, count });
   }
 
-  /** Get current state without modifying timeline. Null if at position 0. */
-  async current<Scope extends TimelineScope>(
+  /** Get current document without modifying timeline. Null if at position 0. */
+  async currentDocument<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
   ): Promise<unknown | null> {
-    return await ctx.runQuery(this.component.lib.getCurrent, { scope });
+    return await ctx.runQuery(this.component.lib.getCurrentDocument, { scope });
   }
 
   /** Get timeline status: canUndo, canRedo, position, length. */
@@ -118,12 +123,12 @@ export class Timeline<TimelineScope extends string = string> {
    * Create a named checkpoint of the current state.
    * Checkpoints persist even when timeline nodes are pruned.
    */
-  async checkpoint<Scope extends TimelineScope>(
+  async createCheckpoint<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
     name: string,
   ): Promise<void> {
-    await ctx.runMutation(this.component.lib.checkpoint, { scope, name });
+    await ctx.runMutation(this.component.lib.createCheckpoint, { scope, name });
   }
 
   /**
@@ -143,23 +148,23 @@ export class Timeline<TimelineScope extends string = string> {
   }
 
   /** Get a checkpoint's document without restoring it. */
-  async getCheckpoint<Scope extends TimelineScope>(
+  async getCheckpointDocument<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
     name: string,
   ): Promise<unknown | null> {
-    return await ctx.runQuery(this.component.lib.getCheckpoint, {
+    return await ctx.runQuery(this.component.lib.getCheckpointDocument, {
       scope,
       name,
     });
   }
 
-  /** List all checkpoint names for a scope. */
-  async getCheckpoints<Scope extends TimelineScope>(
+  /** List all checkpoints for a scope with their names and positions. */
+  async listCheckpoints<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
-  ): Promise<string[]> {
-    return await ctx.runQuery(this.component.lib.getCheckpoints, { scope });
+  ): Promise<Checkpoint[]> {
+    return await ctx.runQuery(this.component.lib.listCheckpoints, { scope });
   }
 
   /** Delete a checkpoint. */
@@ -188,33 +193,23 @@ export class Timeline<TimelineScope extends string = string> {
   }
 
   /** Get document at a specific position without moving head. */
-  async getAtPosition<Scope extends TimelineScope>(
+  async getDocumentAtPosition<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
     position: number,
   ): Promise<unknown | null> {
-    return await ctx.runQuery(this.component.lib.getAtPosition, {
+    return await ctx.runQuery(this.component.lib.getDocumentAtPosition, {
       scope,
       position,
     });
   }
 
-  /** Get all nodes for a scope with their positions. */
-  async getAllNodes<Scope extends TimelineScope>(
+  /** List all nodes for a scope with their positions and documents. */
+  async listNodes<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
   ): Promise<Array<{ position: number; document: unknown }>> {
-    return await ctx.runQuery(this.component.lib.getAllNodes, { scope });
-  }
-
-  /** Get positions that have checkpoints. */
-  async getCheckpointPositions<Scope extends TimelineScope>(
-    ctx: QueryCtx,
-    scope: Scope,
-  ): Promise<number[]> {
-    return await ctx.runQuery(this.component.lib.getCheckpointPositions, {
-      scope,
-    });
+    return await ctx.runQuery(this.component.lib.listNodes, { scope });
   }
 
   /**
@@ -229,27 +224,26 @@ export class Timeline<TimelineScope extends string = string> {
    */
   forScope<Scope extends TimelineScope>(scope: Scope) {
     return {
-      push: (ctx: MutationCtx, state: unknown) => this.push(ctx, scope, state),
+      push: (ctx: MutationCtx, document: unknown) =>
+        this.push(ctx, scope, document),
       undo: (ctx: MutationCtx, count?: number) => this.undo(ctx, scope, count),
       redo: (ctx: MutationCtx, count?: number) => this.redo(ctx, scope, count),
-      current: (ctx: QueryCtx) => this.current(ctx, scope),
+      currentDocument: (ctx: QueryCtx) => this.currentDocument(ctx, scope),
       status: (ctx: QueryCtx) => this.status(ctx, scope),
-      checkpoint: (ctx: MutationCtx, name: string) =>
-        this.checkpoint(ctx, scope, name),
+      createCheckpoint: (ctx: MutationCtx, name: string) =>
+        this.createCheckpoint(ctx, scope, name),
       restoreCheckpoint: (ctx: MutationCtx, name: string) =>
         this.restoreCheckpoint(ctx, scope, name),
-      getCheckpoint: (ctx: QueryCtx, name: string) =>
-        this.getCheckpoint(ctx, scope, name),
-      getCheckpoints: (ctx: QueryCtx) => this.getCheckpoints(ctx, scope),
+      getCheckpointDocument: (ctx: QueryCtx, name: string) =>
+        this.getCheckpointDocument(ctx, scope, name),
+      listCheckpoints: (ctx: QueryCtx) => this.listCheckpoints(ctx, scope),
       deleteCheckpoint: (ctx: MutationCtx, name: string) =>
         this.deleteCheckpoint(ctx, scope, name),
       clear: (ctx: MutationCtx) => this.clear(ctx, scope),
       deleteScope: (ctx: MutationCtx) => this.deleteScope(ctx, scope),
-      getAtPosition: (ctx: QueryCtx, position: number) =>
-        this.getAtPosition(ctx, scope, position),
-      getAllNodes: (ctx: QueryCtx) => this.getAllNodes(ctx, scope),
-      getCheckpointPositions: (ctx: QueryCtx) =>
-        this.getCheckpointPositions(ctx, scope),
+      getDocumentAtPosition: (ctx: QueryCtx, position: number) =>
+        this.getDocumentAtPosition(ctx, scope, position),
+      listNodes: (ctx: QueryCtx) => this.listNodes(ctx, scope),
     };
   }
 }

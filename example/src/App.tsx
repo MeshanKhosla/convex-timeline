@@ -295,14 +295,17 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
         </form>
         {checkpoints && checkpoints.length > 0 && (
           <div className="checkpoint-list">
-            {checkpoints.map((name) => (
-              <div key={name} className="checkpoint-item">
-                <span className="checkpoint-name">{name}</span>
+            {checkpoints.map((checkpoint) => (
+              <div key={checkpoint.name} className="checkpoint-item">
+                <span className="checkpoint-name">{checkpoint.name}</span>
                 <div className="checkpoint-actions">
                   <button
                     className="action-btn"
                     onClick={() =>
-                      restoreCheckpoint({ todoListId: listId, name })
+                      restoreCheckpoint({
+                        todoListId: listId,
+                        name: checkpoint.name,
+                      })
                     }
                   >
                     Restore
@@ -310,7 +313,10 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                   <button
                     className="action-btn danger"
                     onClick={() =>
-                      deleteCheckpoint({ todoListId: listId, name })
+                      deleteCheckpoint({
+                        todoListId: listId,
+                        name: checkpoint.name,
+                      })
                     }
                   >
                     Delete

@@ -24,17 +24,17 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     lib: {
-      checkpoint: FunctionReference<
-        "mutation",
-        "internal",
-        { name: string; scope: string },
-        null,
-        Name
-      >;
       clear: FunctionReference<
         "mutation",
         "internal",
         { scope: string },
+        null,
+        Name
+      >;
+      createCheckpoint: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; scope: string },
         null,
         Name
       >;
@@ -52,45 +52,24 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
-      getAllNodes: FunctionReference<
-        "query",
-        "internal",
-        { scope: string },
-        Array<{ document: any; position: number }>,
-        Name
-      >;
-      getAtPosition: FunctionReference<
-        "query",
-        "internal",
-        { position: number; scope: string },
-        any | null,
-        Name
-      >;
-      getCheckpoint: FunctionReference<
+      getCheckpointDocument: FunctionReference<
         "query",
         "internal",
         { name: string; scope: string },
         any | null,
         Name
       >;
-      getCheckpointPositions: FunctionReference<
+      getCurrentDocument: FunctionReference<
         "query",
         "internal",
         { scope: string },
-        Array<number>,
+        any | null,
         Name
       >;
-      getCheckpoints: FunctionReference<
+      getDocumentAtPosition: FunctionReference<
         "query",
         "internal",
-        { scope: string },
-        Array<string>,
-        Name
-      >;
-      getCurrent: FunctionReference<
-        "query",
-        "internal",
-        { scope: string },
+        { position: number; scope: string },
         any | null,
         Name
       >;
@@ -104,6 +83,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           length: number;
           position: number;
         },
+        Name
+      >;
+      listCheckpoints: FunctionReference<
+        "query",
+        "internal",
+        { scope: string },
+        Array<{ name: string; position: number }>,
+        Name
+      >;
+      listNodes: FunctionReference<
+        "query",
+        "internal",
+        { scope: string },
+        Array<{ document: any; position: number }>,
         Name
       >;
       push: FunctionReference<

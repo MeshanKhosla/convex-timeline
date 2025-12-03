@@ -6,14 +6,14 @@ import { components, initConvexTest } from "./setup.test.js";
 const schema = defineSchema({});
 
 describe("Timeline client", () => {
-  test("push and current work correctly", async () => {
+  test("push and currentDocument work correctly", async () => {
     const t = initConvexTest(schema);
     const timeline = new Timeline(components.timeline);
     const scope = "test-scope";
 
     await t.run(async (ctx) => {
       await timeline.push(ctx, scope, { value: "A" });
-      const current = await timeline.current(ctx, scope);
+      const current = await timeline.currentDocument(ctx, scope);
       expect(current).toEqual({ value: "A" });
     });
   });
@@ -62,7 +62,7 @@ describe("Timeline client", () => {
       await scoped.push(ctx, { value: "A" });
       await scoped.push(ctx, { value: "B" });
 
-      const current = await scoped.current(ctx);
+      const current = await scoped.currentDocument(ctx);
       expect(current).toEqual({ value: "B" });
 
       const undone = await scoped.undo(ctx);
@@ -95,23 +95,23 @@ describe("Timeline client", () => {
     await t.run(async (ctx) => {
       await timeline.push(ctx, scope, { value: "A" });
       await timeline.push(ctx, scope, { value: "B" });
-      await timeline.checkpoint(ctx, scope, "v1");
+      await timeline.createCheckpoint(ctx, scope, "v1");
 
       await timeline.push(ctx, scope, { value: "C" });
 
-      const checkpoints = await timeline.getCheckpoints(ctx, scope);
-      expect(checkpoints).toEqual(["v1"]);
+      const checkpoints = await timeline.listCheckpoints(ctx, scope);
+      expect(checkpoints).toEqual([{ name: "v1", position: 2 }]);
 
       const restored = await timeline.restoreCheckpoint(ctx, scope, "v1");
       expect(restored).toEqual({ value: "B" });
 
       await timeline.deleteCheckpoint(ctx, scope, "v1");
-      const afterDelete = await timeline.getCheckpoints(ctx, scope);
+      const afterDelete = await timeline.listCheckpoints(ctx, scope);
       expect(afterDelete).toEqual([]);
     });
   });
 
-  test("getCheckpoint retrieves checkpoint data without restoring", async () => {
+  test("getCheckpointDocument retrieves checkpoint data without restoring", async () => {
     const t = initConvexTest(schema);
     const timeline = new Timeline(components.timeline);
     const scope = "test-scope";
@@ -119,25 +119,32 @@ describe("Timeline client", () => {
     await t.run(async (ctx) => {
       await timeline.push(ctx, scope, { value: "A" });
       await timeline.push(ctx, scope, { value: "B" });
-      await timeline.checkpoint(ctx, scope, "v1");
+      await timeline.createCheckpoint(ctx, scope, "v1");
       await timeline.push(ctx, scope, { value: "C" });
 
       // Get checkpoint without restoring
-      const checkpointData = await timeline.getCheckpoint(ctx, scope, "v1");
+      const checkpointData = await timeline.getCheckpointDocument(
+        ctx,
+        scope,
+        "v1",
+      );
       expect(checkpointData).toEqual({ value: "B" });
 
       // Verify head position unchanged (still at C)
-      const current = await timeline.current(ctx, scope);
+      const current = await timeline.currentDocument(ctx, scope);
       expect(current).toEqual({ value: "C" });
 
       // Test scoped facade
       const scoped = timeline.forScope(scope);
-      const scopedCheckpointData = await scoped.getCheckpoint(ctx, "v1");
+      const scopedCheckpointData = await scoped.getCheckpointDocument(
+        ctx,
+        "v1",
+      );
       expect(scopedCheckpointData).toEqual({ value: "B" });
     });
   });
 
-  test("getCheckpoint returns null for non-existent checkpoint", async () => {
+  test("getCheckpointDocument returns null for non-existent checkpoint", async () => {
     const t = initConvexTest(schema);
     const timeline = new Timeline(components.timeline);
     const scope = "test-scope";
@@ -145,7 +152,11 @@ describe("Timeline client", () => {
     await t.run(async (ctx) => {
       await timeline.push(ctx, scope, { value: "A" });
 
-      const result = await timeline.getCheckpoint(ctx, scope, "non-existent");
+      const result = await timeline.getCheckpointDocument(
+        ctx,
+        scope,
+        "non-existent",
+      );
       expect(result).toBeNull();
     });
   });

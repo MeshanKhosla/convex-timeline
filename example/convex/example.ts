@@ -207,7 +207,7 @@ export const saveCheckpoint = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    await todoTimeline.checkpoint(ctx, args.name);
+    await todoTimeline.createCheckpoint(ctx, args.name);
     return null;
   },
 });
@@ -234,10 +234,10 @@ export const getCheckpoints = query({
   args: {
     todoListId: v.id("todoLists"),
   },
-  returns: v.array(v.string()),
+  returns: v.array(v.object({ name: v.string(), position: v.number() })),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    return await todoTimeline.getCheckpoints(ctx);
+    return await todoTimeline.listCheckpoints(ctx);
   },
 });
 
@@ -266,7 +266,7 @@ export const getAllTimelineNodes = query({
   ),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    return await todoTimeline.getAllNodes(ctx);
+    return await todoTimeline.listNodes(ctx);
   },
 });
 
@@ -277,6 +277,7 @@ export const getCheckpointPositions = query({
   returns: v.array(v.number()),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    return await todoTimeline.getCheckpointPositions(ctx);
+    const checkpoints = await todoTimeline.listCheckpoints(ctx);
+    return checkpoints.map((c) => c.position);
   },
 });
