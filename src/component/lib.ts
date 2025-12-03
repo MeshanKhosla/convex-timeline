@@ -593,3 +593,40 @@ export const deleteScope = mutation({
     return null;
   },
 });
+
+
+/**
+ * Get document at a specific position without moving head.
+ * Returns null for position 0, out-of-bounds positions, or non-existent scope.
+ */
+export const getAtPosition = query({
+  args: {
+    scope: v.string(),
+    position: v.number(),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    // Position 0 means "before any state" - return null
+    if (args.position <= 0) {
+      return null;
+    }
+
+    const scope = await ctx.db
+      .query("scopes")
+      .withIndex("by_name", (q) => q.eq("name", args.scope))
+      .unique();
+
+    if (!scope) {
+      return null;
+    }
+
+    const node = await ctx.db
+      .query("nodes")
+      .withIndex("by_scope_index", (q) =>
+        q.eq("scope", scope._id).eq("index", args.position),
+      )
+      .unique();
+
+    return node?.document ?? null;
+  },
+});

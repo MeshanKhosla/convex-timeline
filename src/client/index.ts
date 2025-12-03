@@ -333,6 +333,27 @@ export class Timeline<TimelineScope extends string = string> {
   }
 
   /**
+   * Get document at a specific position without moving head.
+   *
+   * Returns null for position 0, out-of-bounds positions, or non-existent scopes.
+   *
+   * @param ctx - Query or mutation context
+   * @param scope - Timeline scope identifier
+   * @param position - Position in the timeline (1-indexed)
+   * @returns Document at the position, or null if not found
+   */
+  async getAtPosition<Scope extends TimelineScope>(
+    ctx: QueryCtx,
+    scope: Scope,
+    position: number,
+  ): Promise<unknown | null> {
+    return await ctx.runQuery(this.component.lib.getAtPosition, {
+      scope,
+      position,
+    });
+  }
+
+  /**
    * Create a scoped facade with the scope pre-bound.
    *
    * Useful when working with a single scope repeatedly.
@@ -367,6 +388,8 @@ export class Timeline<TimelineScope extends string = string> {
         this.deleteCheckpoint(ctx, scope, name),
       clear: (ctx: MutationCtx) => this.clear(ctx, scope),
       deleteScope: (ctx: MutationCtx) => this.deleteScope(ctx, scope),
+      getAtPosition: (ctx: QueryCtx, position: number) =>
+        this.getAtPosition(ctx, scope, position),
     };
   }
 }

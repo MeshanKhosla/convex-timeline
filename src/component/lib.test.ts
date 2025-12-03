@@ -526,6 +526,88 @@ describe("timeline component", () => {
     });
   });
 
+  describe("getAtPosition query", () => {
+    /**
+     * **Feature: timeline-improvements, Property 5: GetAtPosition returns correct document without side effects**
+     * *For any* timeline with N nodes, for any valid position P (1 <= P <= N):
+     * - getAtPosition(P) should return the document that was pushed at position P
+     * - Calling getAtPosition should not change status.position
+     * **Validates: Requirements 5.1, 5.4**
+     */
+    test("Property 5: GetAtPosition returns correct document without side effects", async () => {
+      const ITERATIONS = 20;
+
+      for (let i = 0; i < ITERATIONS; i++) {
+        const t = initConvexTest();
+        const scope = `test-scope-${i}`;
+
+        // Generate random number of pushes (1-10)
+        const numPushes = Math.floor(Math.random() * 10) + 1;
+        const documents: Array<{ value: string; index: number }> = [];
+
+        for (let j = 0; j < numPushes; j++) {
+          const doc = { value: `state-${j}`, index: j };
+          documents.push(doc);
+          await t.mutation(api.lib.push, { scope, document: doc });
+        }
+
+        // Optionally perform some undos to change head position
+        const numUndos = Math.floor(Math.random() * numPushes);
+        if (numUndos > 0) {
+          await t.mutation(api.lib.undo, { scope, count: numUndos });
+        }
+
+        // Get status before getAtPosition
+        const statusBefore = await t.query(api.lib.getStatus, { scope });
+
+        // Pick a random valid position (1 to numPushes)
+        const position = Math.floor(Math.random() * numPushes) + 1;
+
+        // Get document at position
+        const retrieved = await t.query(api.lib.getAtPosition, { scope, position });
+
+        // Verify the document matches what was pushed at that position
+        expect(retrieved).toEqual(documents[position - 1]);
+
+        // Verify head position was not changed
+        const statusAfter = await t.query(api.lib.getStatus, { scope });
+        expect(statusAfter.position).toBe(statusBefore.position);
+      }
+    });
+
+    test("getAtPosition returns null for position 0", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      await t.mutation(api.lib.push, { scope, document: { value: "A" } });
+
+      const result = await t.query(api.lib.getAtPosition, { scope, position: 0 });
+      expect(result).toBeNull();
+    });
+
+    test("getAtPosition returns null for position beyond timeline length", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      await t.mutation(api.lib.push, { scope, document: { value: "A" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "B" } });
+
+      // Position 3 is beyond the timeline length of 2
+      const result = await t.query(api.lib.getAtPosition, { scope, position: 3 });
+      expect(result).toBeNull();
+    });
+
+    test("getAtPosition returns null for non-existent scope", async () => {
+      const t = initConvexTest();
+
+      const result = await t.query(api.lib.getAtPosition, {
+        scope: "non-existent",
+        position: 1,
+      });
+      expect(result).toBeNull();
+    });
+  });
+
   describe("edge cases", () => {
     test("undo on non-existent scope returns null", async () => {
       const t = initConvexTest();
