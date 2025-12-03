@@ -546,3 +546,50 @@ export const getCheckpoint = query({
     return checkpoint?.document ?? null;
   },
 });
+
+
+/**
+ * Delete a scope and all its data (nodes, checkpoints, and scope record).
+ * Returns null for non-existent scope without error.
+ */
+export const deleteScope = mutation({
+  args: {
+    scope: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const scope = await ctx.db
+      .query("scopes")
+      .withIndex("by_name", (q) => q.eq("name", args.scope))
+      .unique();
+
+    if (!scope) {
+      return null;
+    }
+
+    // Delete all nodes for this scope
+    const nodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
+      .collect();
+
+    for (const node of nodes) {
+      await ctx.db.delete(node._id);
+    }
+
+    // Delete all checkpoints for this scope
+    const checkpoints = await ctx.db
+      .query("checkpoints")
+      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
+      .collect();
+
+    for (const checkpoint of checkpoints) {
+      await ctx.db.delete(checkpoint._id);
+    }
+
+    // Delete the scope record itself
+    await ctx.db.delete(scope._id);
+
+    return null;
+  },
+});

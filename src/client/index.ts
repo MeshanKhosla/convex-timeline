@@ -316,6 +316,23 @@ export class Timeline<TimelineScope extends string = string> {
   }
 
   /**
+   * Delete a scope and all its data (nodes, checkpoints, and scope record).
+   *
+   * Returns without error for non-existent scopes.
+   *
+   * @param ctx - Mutation context
+   * @param scope - Timeline scope identifier
+   */
+  async deleteScope<Scope extends TimelineScope>(
+    ctx: MutationCtx,
+    scope: Scope,
+  ): Promise<void> {
+    await ctx.runMutation(this.component.lib.deleteScope, {
+      scope,
+    });
+  }
+
+  /**
    * Create a scoped facade with the scope pre-bound.
    *
    * Useful when working with a single scope repeatedly.
@@ -349,6 +366,7 @@ export class Timeline<TimelineScope extends string = string> {
       deleteCheckpoint: (ctx: MutationCtx, name: string) =>
         this.deleteCheckpoint(ctx, scope, name),
       clear: (ctx: MutationCtx) => this.clear(ctx, scope),
+      deleteScope: (ctx: MutationCtx) => this.deleteScope(ctx, scope),
     };
   }
 }
