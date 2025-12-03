@@ -3,7 +3,11 @@ import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server.js";
 import { mutation, query } from "./_generated/server.js";
 
-/** Prune nodes ahead of current head and insert a new node. */
+/**
+ * Prune nodes ahead of current head and insert a new node.
+ * Also invalidates checkpoint positions when their nodes are pruned.
+ * @see lib.test.ts "checkpoint position becomes null when its node is pruned"
+ */
 async function pruneAheadAndInsert(
   ctx: MutationCtx,
   scopeId: Id<"scopes">,
@@ -16,8 +20,26 @@ async function pruneAheadAndInsert(
     .filter((q) => q.gt(q.field("index"), currentHead))
     .collect();
 
+  const prunedPositions = new Set(nodesToPrune.map((n) => n.index));
+
   for (const node of nodesToPrune) {
     await ctx.db.delete(node._id);
+  }
+
+  if (prunedPositions.size > 0) {
+    const checkpoints = await ctx.db
+      .query("checkpoints")
+      .withIndex("by_scope", (q) => q.eq("scope", scopeId))
+      .collect();
+
+    for (const checkpoint of checkpoints) {
+      if (
+        checkpoint.position !== null &&
+        prunedPositions.has(checkpoint.position)
+      ) {
+        await ctx.db.patch(checkpoint._id, { position: null });
+      }
+    }
   }
 
   const newIndex = currentHead + 1;
@@ -30,7 +52,10 @@ async function pruneAheadAndInsert(
   return newIndex;
 }
 
-/** Prune oldest nodes if count exceeds maxNodes. */
+/**
+ * Prune oldest nodes if count exceeds maxNodes.
+ * Also invalidates checkpoint positions when their nodes are pruned.
+ */
 async function pruneOldestIfNeeded(
   ctx: MutationCtx,
   scopeId: Id<"scopes">,
@@ -46,8 +71,26 @@ async function pruneOldestIfNeeded(
   if (allNodes.length > maxNodes) {
     allNodes.sort((a, b) => a.index - b.index);
     const nodesToDelete = allNodes.slice(0, allNodes.length - maxNodes);
+    const prunedPositions = new Set(nodesToDelete.map((n) => n.index));
+
     for (const node of nodesToDelete) {
       await ctx.db.delete(node._id);
+    }
+
+    // Invalidate checkpoints at pruned positions
+    // see lib.test.ts "checkpoint position becomes null when its node is pruned"
+    const checkpoints = await ctx.db
+      .query("checkpoints")
+      .withIndex("by_scope", (q) => q.eq("scope", scopeId))
+      .collect();
+
+    for (const checkpoint of checkpoints) {
+      if (
+        checkpoint.position !== null &&
+        prunedPositions.has(checkpoint.position)
+      ) {
+        await ctx.db.patch(checkpoint._id, { position: null });
+      }
     }
   }
 }
@@ -341,7 +384,9 @@ export const restoreCheckpoint = mutation({
 /** List all checkpoints for a scope with their names and positions. */
 export const listCheckpoints = query({
   args: { scope: v.string() },
-  returns: v.array(v.object({ name: v.string(), position: v.number() })),
+  returns: v.array(
+    v.object({ name: v.string(), position: v.union(v.number(), v.null()) }),
+  ),
   handler: async (ctx, args) => {
     const scope = await ctx.db
       .query("scopes")

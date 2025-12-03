@@ -20,7 +20,7 @@ export interface TimelineStatus {
 
 export interface Checkpoint {
   name: string;
-  position: number;
+  position: number | null;
 }
 
 /**

@@ -525,7 +525,7 @@ describe("timeline component", () => {
       expect(restored).toEqual({ value: "B" });
     });
 
-    test("createCheckpoint persists through pruning", async () => {
+    test("createCheckpoint document persists through pruning but position becomes null", async () => {
       const t = initConvexTest();
       const scope = "test-scope";
 
@@ -537,9 +537,11 @@ describe("timeline component", () => {
       await t.mutation(api.lib.undo, { scope });
       await t.mutation(api.lib.push, { scope, document: { value: "D" } });
 
+      // Position becomes null because the original node at position 3 was pruned
       const checkpoints = await t.query(api.lib.listCheckpoints, { scope });
-      expect(checkpoints).toEqual([{ name: "at-C", position: 3 }]);
+      expect(checkpoints).toEqual([{ name: "at-C", position: null }]);
 
+      // But the checkpoint's document data is preserved and can be restored
       const restored = await t.mutation(api.lib.restoreCheckpoint, {
         scope,
         name: "at-C",
@@ -828,6 +830,73 @@ describe("timeline component", () => {
 
       checkpoints = await t.query(api.lib.listCheckpoints, { scope });
       expect(checkpoints).toEqual([{ name: "cp", position: 3 }]);
+    });
+
+    test("checkpoint position becomes null when its node is pruned", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      // 1. Add five todos (positions 1-5)
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-1" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-2" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-3" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-4" } });
+      await t.mutation(api.lib.push, { scope, document: { value: "todo-5" } });
+
+      const statusAfterPushes = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterPushes.position).toBe(5);
+
+      // 2. Undo twice (head at 3)
+      await t.mutation(api.lib.undo, { scope, count: 2 });
+      const statusAfterUndo2 = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterUndo2.position).toBe(3);
+
+      // 3. Create checkpoint at position 3 (document: "todo-3")
+      await t.mutation(api.lib.createCheckpoint, { scope, name: "cp-at-3" });
+      const checkpointsAfterCreate = await t.query(api.lib.listCheckpoints, {
+        scope,
+      });
+      expect(checkpointsAfterCreate).toEqual([
+        { name: "cp-at-3", position: 3 },
+      ]);
+
+      // 4. Undo once (head at 2)
+      await t.mutation(api.lib.undo, { scope });
+      const statusAfterUndo1 = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterUndo1.position).toBe(2);
+
+      // 5. Push new document - this prunes nodes at positions 3-5 and creates new node at position 3
+      await t.mutation(api.lib.push, {
+        scope,
+        document: { value: "new-todo" },
+      });
+      const statusAfterPush = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfterPush.position).toBe(3);
+      expect(statusAfterPush.length).toBe(3);
+
+      // The checkpoint position should now be null since its node was pruned
+      const checkpointsAfterPush = await t.query(api.lib.listCheckpoints, {
+        scope,
+      });
+      expect(checkpointsAfterPush).toEqual([
+        { name: "cp-at-3", position: null },
+      ]);
+
+      // Verify the current document is the new one
+      const current = await t.query(api.lib.getCurrentDocument, { scope });
+      expect(current).toEqual({ value: "new-todo" });
+
+      // Verify the checkpoint still restores the OLD document (it persists independently)
+      const checkpointDoc = await t.query(api.lib.getCheckpointDocument, {
+        scope,
+        name: "cp-at-3",
+      });
+      expect(checkpointDoc).toEqual({ value: "todo-3" });
+
+      // The nodes list should show position 3 has "new-todo", not "todo-3"
+      const nodes = await t.query(api.lib.listNodes, { scope });
+      const nodeAt3 = nodes.find((n) => n.position === 3);
+      expect(nodeAt3?.document).toEqual({ value: "new-todo" });
     });
   });
 

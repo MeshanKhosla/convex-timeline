@@ -89,7 +89,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "query",
         "internal",
         { scope: string },
-        Array<{ name: string; position: number }>,
+        Array<{ name: string; position: number | null }>,
         Name
       >;
       listNodes: FunctionReference<

@@ -20,7 +20,7 @@ export default defineSchema({
     scope: v.id("scopes"),
     name: v.string(),
     document: v.any(),
-    position: v.number(), // Position where checkpoint was created
+    position: v.union(v.number(), v.null()), // Position where checkpoint was created, null if original node was pruned
   })
     .index("by_scope", ["scope"])
     .index("by_scope_name", ["scope", "name"])

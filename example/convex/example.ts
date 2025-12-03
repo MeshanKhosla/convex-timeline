@@ -234,7 +234,9 @@ export const getCheckpoints = query({
   args: {
     todoListId: v.id("todoLists"),
   },
-  returns: v.array(v.object({ name: v.string(), position: v.number() })),
+  returns: v.array(
+    v.object({ name: v.string(), position: v.union(v.number(), v.null()) }),
+  ),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     return await todoTimeline.listCheckpoints(ctx);
@@ -278,6 +280,8 @@ export const getCheckpointPositions = query({
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     const checkpoints = await todoTimeline.listCheckpoints(ctx);
-    return checkpoints.map((c) => c.position);
+    return checkpoints
+      .map((c) => c.position)
+      .filter((p): p is number => p !== null);
   },
 });
