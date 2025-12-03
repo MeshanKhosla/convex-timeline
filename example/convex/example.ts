@@ -144,11 +144,12 @@ export const deleteTodo = mutation({
 export const undo = mutation({
   args: {
     todoListId: v.id("todoLists"),
+    count: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    const state = await todoTimeline.undo(ctx);
+    const state = await todoTimeline.undo(ctx, args.count);
 
     // null means we're at position 0 (no state), use empty array
     await ctx.db.patch(args.todoListId, {
@@ -164,11 +165,12 @@ export const undo = mutation({
 export const redo = mutation({
   args: {
     todoListId: v.id("todoLists"),
+    count: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
-    const state = await todoTimeline.redo(ctx);
+    const state = await todoTimeline.redo(ctx, args.count);
 
     // Only update if we actually moved forward
     if (state !== null) {

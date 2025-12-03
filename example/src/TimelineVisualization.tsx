@@ -11,9 +11,11 @@ interface Node {
 export function TimelineVisualization({
   listId,
   currentPosition,
+  onNavigateToPosition,
 }: {
   listId: Id<"todoLists">;
-  currentPosition: number;
+  currentPosition: number | null;
+  onNavigateToPosition?: (position: number) => void;
 }) {
   const nodes = useQuery(api.example.getAllTimelineNodes, {
     todoListId: listId,
@@ -70,25 +72,21 @@ export function TimelineVisualization({
     );
   }
 
-  const maxPosition = Math.max(...nodes.map((n) => n.position), 1);
-  const minPosition = Math.min(...nodes.map((n) => n.position), 1);
+  const maxPosition = Math.max(...nodes.map((n) => n.position));
+  const minPosition = Math.min(...nodes.map((n) => n.position));
 
   return (
     <div className="timeline-viz">
       <div className="timeline-container">
         <div className="timeline-track">
-          {/* Position 0 marker */}
-          <div className="timeline-position-marker position-0">
-            <div className="marker-dot"></div>
-            <div className="marker-label">0</div>
-          </div>
-
           {/* Nodes */}
           {nodes.map((node) => {
             const isHead = node.position === currentPosition;
             const isPruning = pruningNodes.has(node.position);
-            const isAhead = node.position > currentPosition;
-            const isBehind = node.position < currentPosition;
+            const isAhead =
+              currentPosition !== null && node.position > currentPosition;
+            const isBehind =
+              currentPosition !== null && node.position < currentPosition;
             const hasCheckpoint =
               checkpointPositions?.includes(node.position) ?? false;
 
@@ -114,7 +112,17 @@ export function TimelineVisualization({
                 }}
               >
                 <div className="node-connector"></div>
-                <div className="node-circle">
+                <div
+                  className="node-circle"
+                  onClick={() => {
+                    if (onNavigateToPosition && !isHead) {
+                      onNavigateToPosition(node.position);
+                    }
+                  }}
+                  style={{
+                    cursor: isHead ? "default" : "pointer",
+                  }}
+                >
                   {isHead && <div className="head-indicator"></div>}
                   {hasCheckpoint && (
                     <div className="checkpoint-indicator">●</div>

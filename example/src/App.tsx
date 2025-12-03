@@ -121,6 +121,30 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
     updateTodo({ todoListId: listId, todoId: id, completed: !completed });
   };
 
+  const handleNavigateToPosition = async (targetPosition: number) => {
+    if (status === undefined) return;
+
+    // If already at the target position, do nothing
+    if (status.position === targetPosition) return;
+
+    // If current position is null (before any nodes), redo to reach target
+    if (status.position === null) {
+      await redo({ todoListId: listId, count: targetPosition + 1 });
+      return;
+    }
+
+    // Calculate the difference
+    const diff = targetPosition - status.position;
+
+    if (diff > 0) {
+      // Need to redo forward
+      await redo({ todoListId: listId, count: diff });
+    } else {
+      // Need to undo backward
+      await undo({ todoListId: listId, count: -diff });
+    }
+  };
+
   const handleEdit = (id: string, text: string) => {
     setEditId(id);
     setEditText(text);
@@ -189,6 +213,7 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
       <TimelineVisualization
         listId={listId}
         currentPosition={status.position}
+        onNavigateToPosition={handleNavigateToPosition}
       />
 
       <form className="add-form" onSubmit={handleAdd}>
@@ -208,12 +233,17 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
           <div className="todo-empty">No todos yet</div>
         ) : (
           todos.map((todo) => (
-            <div key={todo.id} className="todo-item">
+            <div
+              key={todo.id}
+              className="todo-item"
+              onClick={() => handleToggle(todo.id, todo.completed)}
+            >
               <input
                 type="checkbox"
                 className="todo-checkbox"
                 checked={todo.completed}
                 onChange={() => handleToggle(todo.id, todo.completed)}
+                onClick={(e) => e.stopPropagation()}
               />
 
               {editId === todo.id ? (
@@ -223,6 +253,7 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                     e.preventDefault();
                     handleSave();
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <input
                     type="text"
@@ -249,11 +280,13 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
                 <>
                   <span
                     className={`todo-text ${todo.completed ? "completed" : ""}`}
-                    onDoubleClick={() => handleEdit(todo.id, todo.text)}
                   >
                     {todo.text}
                   </span>
-                  <div className="todo-actions">
+                  <div
+                    className="todo-actions"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       className="action-btn"
                       onClick={() => handleEdit(todo.id, todo.text)}
@@ -284,11 +317,11 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
             placeholder="Checkpoint name..."
             value={checkpointName}
             onChange={(e) => setCheckpointName(e.target.value)}
-            disabled={status.position === 0}
+            disabled={status.position === null}
           />
           <button
             type="submit"
-            disabled={status.position === 0 || !checkpointName.trim()}
+            disabled={status.position === null || !checkpointName.trim()}
           >
             Save
           </button>
