@@ -364,6 +364,73 @@ describe("timeline component", () => {
     });
   });
 
+  describe("getCheckpoint query", () => {
+    /**
+     * **Feature: timeline-improvements, Property 3: Checkpoint data round-trip**
+     * *For any* document that is pushed and then checkpointed, calling getCheckpoint
+     * with that checkpoint name should return a document equal to the original.
+     * **Validates: Requirements 3.1**
+     */
+    test("Property 3: Checkpoint data round-trip", async () => {
+      const ITERATIONS = 20;
+
+      for (let i = 0; i < ITERATIONS; i++) {
+        const t = initConvexTest();
+        const scope = `test-scope-${i}`;
+
+        // Generate random document
+        const document = {
+          id: Math.random().toString(36).substring(7),
+          value: Math.floor(Math.random() * 1000),
+          nested: {
+            data: `nested-${Math.random().toString(36).substring(7)}`,
+          },
+        };
+
+        // Push the document
+        await t.mutation(api.lib.push, { scope, document });
+
+        // Create a checkpoint with random name
+        const checkpointName = `checkpoint-${Math.random().toString(36).substring(7)}`;
+        await t.mutation(api.lib.checkpoint, { scope, name: checkpointName });
+
+        // Get the checkpoint
+        const retrieved = await t.query(api.lib.getCheckpoint, {
+          scope,
+          name: checkpointName,
+        });
+
+        // Verify round-trip: retrieved document should equal original
+        expect(retrieved).toEqual(document);
+      }
+    });
+
+    test("getCheckpoint returns null for non-existent checkpoint", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      // Create scope with a push
+      await t.mutation(api.lib.push, { scope, document: { value: "A" } });
+
+      // Try to get non-existent checkpoint
+      const result = await t.query(api.lib.getCheckpoint, {
+        scope,
+        name: "non-existent",
+      });
+      expect(result).toBeNull();
+    });
+
+    test("getCheckpoint returns null for non-existent scope", async () => {
+      const t = initConvexTest();
+
+      const result = await t.query(api.lib.getCheckpoint, {
+        scope: "non-existent",
+        name: "any-checkpoint",
+      });
+      expect(result).toBeNull();
+    });
+  });
+
   describe("edge cases", () => {
     test("undo on non-existent scope returns null", async () => {
       const t = initConvexTest();

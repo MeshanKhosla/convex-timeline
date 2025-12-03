@@ -514,3 +514,35 @@ export const clear = mutation({
     return null;
   },
 });
+
+
+/**
+ * Get a checkpoint's document without restoring it.
+ * Returns null for non-existent checkpoint or scope.
+ */
+export const getCheckpoint = query({
+  args: {
+    scope: v.string(),
+    name: v.string(),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const scope = await ctx.db
+      .query("scopes")
+      .withIndex("by_name", (q) => q.eq("name", args.scope))
+      .unique();
+
+    if (!scope) {
+      return null;
+    }
+
+    const checkpoint = await ctx.db
+      .query("checkpoints")
+      .withIndex("by_scope_name", (q) =>
+        q.eq("scope", scope._id).eq("name", args.name),
+      )
+      .unique();
+
+    return checkpoint?.document ?? null;
+  },
+});

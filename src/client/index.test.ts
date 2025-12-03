@@ -110,4 +110,43 @@ describe("Timeline client", () => {
       expect(afterDelete).toEqual([]);
     });
   });
+
+  test("getCheckpoint retrieves checkpoint data without restoring", async () => {
+    const t = initConvexTest(schema);
+    const timeline = new Timeline(components.timeline);
+    const scope = "test-scope";
+
+    await t.run(async (ctx) => {
+      await timeline.push(ctx, scope, { value: "A" });
+      await timeline.push(ctx, scope, { value: "B" });
+      await timeline.checkpoint(ctx, scope, "v1");
+      await timeline.push(ctx, scope, { value: "C" });
+
+      // Get checkpoint without restoring
+      const checkpointData = await timeline.getCheckpoint(ctx, scope, "v1");
+      expect(checkpointData).toEqual({ value: "B" });
+
+      // Verify head position unchanged (still at C)
+      const current = await timeline.current(ctx, scope);
+      expect(current).toEqual({ value: "C" });
+
+      // Test scoped facade
+      const scoped = timeline.for(scope);
+      const scopedCheckpointData = await scoped.getCheckpoint(ctx, "v1");
+      expect(scopedCheckpointData).toEqual({ value: "B" });
+    });
+  });
+
+  test("getCheckpoint returns null for non-existent checkpoint", async () => {
+    const t = initConvexTest(schema);
+    const timeline = new Timeline(components.timeline);
+    const scope = "test-scope";
+
+    await t.run(async (ctx) => {
+      await timeline.push(ctx, scope, { value: "A" });
+
+      const result = await timeline.getCheckpoint(ctx, scope, "non-existent");
+      expect(result).toBeNull();
+    });
+  });
 });

@@ -246,6 +246,25 @@ export class Timeline<TimelineScope extends string = string> {
   }
 
   /**
+   * Get a checkpoint's document without restoring it.
+   *
+   * @param ctx - Query or mutation context
+   * @param scope - Timeline scope identifier
+   * @param name - Checkpoint name to retrieve
+   * @returns The checkpoint's document, or null if not found
+   */
+  async getCheckpoint<Scope extends TimelineScope>(
+    ctx: QueryCtx,
+    scope: Scope,
+    name: string,
+  ): Promise<unknown | null> {
+    return await ctx.runQuery(this.component.lib.getCheckpoint, {
+      scope,
+      name,
+    });
+  }
+
+  /**
    * List all checkpoint names for a scope.
    *
    * @param ctx - Query or mutation context
@@ -324,6 +343,8 @@ export class Timeline<TimelineScope extends string = string> {
         this.checkpoint(ctx, scope, name),
       restoreCheckpoint: (ctx: MutationCtx, name: string) =>
         this.restoreCheckpoint(ctx, scope, name),
+      getCheckpoint: (ctx: QueryCtx, name: string) =>
+        this.getCheckpoint(ctx, scope, name),
       getCheckpoints: (ctx: QueryCtx) => this.getCheckpoints(ctx, scope),
       deleteCheckpoint: (ctx: MutationCtx, name: string) =>
         this.deleteCheckpoint(ctx, scope, name),
