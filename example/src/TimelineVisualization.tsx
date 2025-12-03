@@ -28,7 +28,6 @@ export function TimelineVisualization({
     if (!nodes) return;
 
     const prevNodes = prevNodesRef.current;
-    const prevPositions = new Set(prevNodes.map((n) => n.position));
     const currentPositions = new Set(nodes.map((n) => n.position));
 
     // Find nodes that were pruned (existed before but not now)
@@ -39,16 +38,20 @@ export function TimelineVisualization({
       }
     }
 
+    prevNodesRef.current = nodes;
+
     if (pruned.size > 0) {
-      setPruningNodes(pruned);
-      // Clear pruning animation after it completes
+      // Use setTimeout to avoid calling setState synchronously in effect
       const timer = setTimeout(() => {
-        setPruningNodes(new Set());
-      }, 600); // Match animation duration
+        setPruningNodes(pruned);
+        // Clear pruning animation after it completes
+        const clearTimer = setTimeout(() => {
+          setPruningNodes(new Set());
+        }, 600); // Match animation duration
+        return () => clearTimeout(clearTimer);
+      }, 0);
       return () => clearTimeout(timer);
     }
-
-    prevNodesRef.current = nodes;
   }, [nodes]);
 
   if (nodes === undefined) {
