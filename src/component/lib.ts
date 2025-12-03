@@ -3,23 +3,13 @@ import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server.js";
 import { mutation, query } from "./_generated/server.js";
 
-/**
- * Internal helper: Prune nodes ahead of current head and insert a new node.
- * Used by both push and restoreCheckpoint to avoid code duplication.
- *
- * @param ctx - Mutation context
- * @param scopeId - The scope ID
- * @param currentHead - Current head position
- * @param document - Document to insert
- * @returns The new index (currentHead + 1)
- */
+/** Prune nodes ahead of current head and insert a new node. */
 async function pruneAheadAndInsert(
   ctx: MutationCtx,
   scopeId: Id<"scopes">,
   currentHead: number,
   document: unknown,
 ): Promise<number> {
-  // Prune nodes ahead of current head (handles push-after-undo)
   const nodesToPrune = await ctx.db
     .query("nodes")
     .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
@@ -30,7 +20,6 @@ async function pruneAheadAndInsert(
     await ctx.db.delete(node._id);
   }
 
-  // Insert new node at head + 1
   const newIndex = currentHead + 1;
   await ctx.db.insert("nodes", {
     scope: scopeId,
@@ -41,22 +30,13 @@ async function pruneAheadAndInsert(
   return newIndex;
 }
 
-/**
- * Internal helper: Prune oldest nodes if count exceeds maxNodes.
- * Used by both push and restoreCheckpoint to avoid code duplication.
- *
- * @param ctx - Mutation context
- * @param scopeId - The scope ID
- * @param maxNodes - Maximum number of nodes to keep
- */
+/** Prune oldest nodes if count exceeds maxNodes. */
 async function pruneOldestIfNeeded(
   ctx: MutationCtx,
   scopeId: Id<"scopes">,
   maxNodes: number,
 ): Promise<void> {
-  if (maxNodes <= 0) {
-    return;
-  }
+  if (maxNodes <= 0) return;
 
   const allNodes = await ctx.db
     .query("nodes")
@@ -64,7 +44,6 @@ async function pruneOldestIfNeeded(
     .collect();
 
   if (allNodes.length > maxNodes) {
-    // Sort by index ascending to find oldest
     allNodes.sort((a, b) => a.index - b.index);
     const nodesToDelete = allNodes.slice(0, allNodes.length - maxNodes);
     for (const node of nodesToDelete) {
@@ -76,13 +55,13 @@ async function pruneOldestIfNeeded(
 /**
  * Push a new state node onto the timeline.
  *
- * If the head is not at the leaf (i.e., user has undone), this prunes
- * all nodes ahead of the current head before inserting the new node.
+ * If head is not at the leaf (after undo), prunes all nodes ahead of head first.
  *
- * Timeline behavior:
- *   Before: [A:1] -- [B:2] -- [C:3]  head=2 (after undo)
- *   push(D)
- *   After:  [A:1] -- [B:2] -- [D:3]  head=3 (C pruned)
+ * ```
+ * Before: [A:1] -- [B:2] -- [C:3]  head=2 (after undo)
+ * push(D)
+ * After:  [A:1] -- [B:2] -- [D:3]  head=3 (C pruned)
+ * ```
  */
 export const push = mutation({
   args: {
@@ -97,19 +76,15 @@ export const push = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    // Auto-create scope if it doesn't exist
     if (!scope) {
       const scopeId = await ctx.db.insert("scopes", {
         name: args.scope,
         head: 0,
       });
       scope = await ctx.db.get(scopeId);
-      if (!scope) {
-        throw new Error("Failed to create scope");
-      }
+      if (!scope) throw new Error("Failed to create scope");
     }
 
-    // Prune nodes ahead of head and insert new node
     const newIndex = await pruneAheadAndInsert(
       ctx,
       scope._id,
@@ -117,12 +92,8 @@ export const push = mutation({
       args.document,
     );
 
-    // Update head to point to new node
-    await ctx.db.patch(scope._id, {
-      head: newIndex,
-    });
+    await ctx.db.patch(scope._id, { head: newIndex });
 
-    // Prune oldest nodes if we exceed maxNodes
     if (args.maxNodes !== undefined) {
       await pruneOldestIfNeeded(ctx, scope._id, args.maxNodes);
     }
@@ -147,20 +118,12 @@ export const undo = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
-    const countToMove = args.count ?? 1;
-    const newHead = Math.max(0, scope.head - countToMove);
+    const newHead = Math.max(0, scope.head - (args.count ?? 1));
+    await ctx.db.patch(scope._id, { head: newHead });
 
-    await ctx.db.patch(scope._id, {
-      head: newHead,
-    });
-
-    if (newHead === 0) {
-      return null;
-    }
+    if (newHead === 0) return null;
 
     const node = await ctx.db
       .query("nodes")
@@ -189,11 +152,8 @@ export const redo = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
-    // Find the leaf (highest index)
     const leafNode = await ctx.db
       .query("nodes")
       .withIndex("by_scope_index", (q) => q.eq("scope", scope._id))
@@ -201,16 +161,11 @@ export const redo = mutation({
       .first();
 
     const maxIndex = leafNode?.index ?? 0;
-    const countToMove = args.count ?? 1;
-    const newHead = Math.min(maxIndex, scope.head + countToMove);
+    const newHead = Math.min(maxIndex, scope.head + (args.count ?? 1));
 
-    await ctx.db.patch(scope._id, {
-      head: newHead,
-    });
+    await ctx.db.patch(scope._id, { head: newHead });
 
-    if (newHead === 0) {
-      return null;
-    }
+    if (newHead === 0) return null;
 
     const node = await ctx.db
       .query("nodes")
@@ -228,9 +183,7 @@ export const redo = mutation({
  * Returns null if head is at position 0 (before any state).
  */
 export const getCurrent = query({
-  args: {
-    scope: v.string(),
-  },
+  args: { scope: v.string() },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const scope = await ctx.db
@@ -238,9 +191,7 @@ export const getCurrent = query({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope || scope.head === 0) {
-      return null;
-    }
+    if (!scope || scope.head === 0) return null;
 
     const node = await ctx.db
       .query("nodes")
@@ -253,13 +204,9 @@ export const getCurrent = query({
   },
 });
 
-/**
- * Get timeline status including navigation availability and position info.
- */
+/** Get timeline status including navigation availability and position info. */
 export const getStatus = query({
-  args: {
-    scope: v.string(),
-  },
+  args: { scope: v.string() },
   returns: v.object({
     canUndo: v.boolean(),
     canRedo: v.boolean(),
@@ -273,35 +220,28 @@ export const getStatus = query({
       .unique();
 
     if (!scope) {
-      return {
-        canUndo: false,
-        canRedo: false,
-        position: 0,
-        length: 0,
-      };
+      return { canUndo: false, canRedo: false, position: 0, length: 0 };
     }
 
-    // Count total nodes
     const nodes = await ctx.db
       .query("nodes")
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
       .collect();
 
-    const length = nodes.length;
     const leafIndex = nodes.reduce((max, n) => Math.max(max, n.index), 0);
 
     return {
       canUndo: scope.head > 0,
       canRedo: scope.head < leafIndex,
       position: scope.head,
-      length,
+      length: nodes.length,
     };
   },
 });
 
 /**
  * Create a named checkpoint of the current state.
- * Checkpoints are independent of the timeline and persist through pruning.
+ * Checkpoints persist independently of the timeline through pruning.
  */
 export const checkpoint = mutation({
   args: {
@@ -315,15 +255,10 @@ export const checkpoint = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      throw new Error(`Scope "${args.scope}" not found`);
-    }
-
-    if (scope.head === 0) {
+    if (!scope) throw new Error(`Scope "${args.scope}" not found`);
+    if (scope.head === 0)
       throw new Error("Cannot checkpoint at position 0 (no state)");
-    }
 
-    // Get current state
     const currentNode = await ctx.db
       .query("nodes")
       .withIndex("by_scope_index", (q) =>
@@ -331,11 +266,8 @@ export const checkpoint = mutation({
       )
       .unique();
 
-    if (!currentNode) {
-      throw new Error("Current state not found");
-    }
+    if (!currentNode) throw new Error("Current state not found");
 
-    // Check if checkpoint with this name already exists
     const existing = await ctx.db
       .query("checkpoints")
       .withIndex("by_scope_name", (q) =>
@@ -344,12 +276,8 @@ export const checkpoint = mutation({
       .unique();
 
     if (existing) {
-      // Update existing checkpoint
-      await ctx.db.patch(existing._id, {
-        document: currentNode.document,
-      });
+      await ctx.db.patch(existing._id, { document: currentNode.document });
     } else {
-      // Create new checkpoint
       await ctx.db.insert("checkpoints", {
         scope: scope._id,
         name: args.name,
@@ -363,7 +291,7 @@ export const checkpoint = mutation({
 
 /**
  * Restore a checkpoint by pushing its state as a new node.
- * This is non-destructive - you can undo the restore.
+ * Non-destructive: you can undo the restore.
  */
 export const restoreCheckpoint = mutation({
   args: {
@@ -378,9 +306,7 @@ export const restoreCheckpoint = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      throw new Error(`Scope "${args.scope}" not found`);
-    }
+    if (!scope) throw new Error(`Scope "${args.scope}" not found`);
 
     const checkpoint = await ctx.db
       .query("checkpoints")
@@ -389,11 +315,8 @@ export const restoreCheckpoint = mutation({
       )
       .unique();
 
-    if (!checkpoint) {
-      throw new Error(`Checkpoint "${args.name}" not found`);
-    }
+    if (!checkpoint) throw new Error(`Checkpoint "${args.name}" not found`);
 
-    // Prune nodes ahead of head and insert checkpoint document as new node
     const newIndex = await pruneAheadAndInsert(
       ctx,
       scope._id,
@@ -401,11 +324,8 @@ export const restoreCheckpoint = mutation({
       checkpoint.document,
     );
 
-    await ctx.db.patch(scope._id, {
-      head: newIndex,
-    });
+    await ctx.db.patch(scope._id, { head: newIndex });
 
-    // Prune oldest nodes if we exceed maxNodes
     if (args.maxNodes !== undefined) {
       await pruneOldestIfNeeded(ctx, scope._id, args.maxNodes);
     }
@@ -414,13 +334,9 @@ export const restoreCheckpoint = mutation({
   },
 });
 
-/**
- * List all checkpoint names for a scope.
- */
+/** List all checkpoint names for a scope. */
 export const getCheckpoints = query({
-  args: {
-    scope: v.string(),
-  },
+  args: { scope: v.string() },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
     const scope = await ctx.db
@@ -428,9 +344,7 @@ export const getCheckpoints = query({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return [];
-    }
+    if (!scope) return [];
 
     const checkpoints = await ctx.db
       .query("checkpoints")
@@ -441,9 +355,7 @@ export const getCheckpoints = query({
   },
 });
 
-/**
- * Delete a checkpoint.
- */
+/** Delete a checkpoint. */
 export const deleteCheckpoint = mutation({
   args: {
     scope: v.string(),
@@ -456,9 +368,7 @@ export const deleteCheckpoint = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
     const checkpoint = await ctx.db
       .query("checkpoints")
@@ -467,24 +377,18 @@ export const deleteCheckpoint = mutation({
       )
       .unique();
 
-    if (checkpoint) {
-      await ctx.db.delete(checkpoint._id);
-    }
+    if (checkpoint) await ctx.db.delete(checkpoint._id);
 
     return null;
   },
 });
 
-
 /**
  * Clear all nodes from a scope, resetting head to 0.
  * Checkpoints are preserved.
- * Returns null for non-existent scope without error.
  */
 export const clear = mutation({
-  args: {
-    scope: v.string(),
-  },
+  args: { scope: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const scope = await ctx.db
@@ -492,11 +396,8 @@ export const clear = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
-    // Delete all nodes for this scope
     const nodes = await ctx.db
       .query("nodes")
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
@@ -506,20 +407,13 @@ export const clear = mutation({
       await ctx.db.delete(node._id);
     }
 
-    // Reset head to 0
-    await ctx.db.patch(scope._id, {
-      head: 0,
-    });
+    await ctx.db.patch(scope._id, { head: 0 });
 
     return null;
   },
 });
 
-
-/**
- * Get a checkpoint's document without restoring it.
- * Returns null for non-existent checkpoint or scope.
- */
+/** Get a checkpoint's document without restoring it. */
 export const getCheckpoint = query({
   args: {
     scope: v.string(),
@@ -532,9 +426,7 @@ export const getCheckpoint = query({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
     const checkpoint = await ctx.db
       .query("checkpoints")
@@ -547,15 +439,9 @@ export const getCheckpoint = query({
   },
 });
 
-
-/**
- * Delete a scope and all its data (nodes, checkpoints, and scope record).
- * Returns null for non-existent scope without error.
- */
+/** Delete a scope and all its data (nodes, checkpoints, and scope record). */
 export const deleteScope = mutation({
-  args: {
-    scope: v.string(),
-  },
+  args: { scope: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const scope = await ctx.db
@@ -563,11 +449,8 @@ export const deleteScope = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
-    // Delete all nodes for this scope
     const nodes = await ctx.db
       .query("nodes")
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
@@ -577,7 +460,6 @@ export const deleteScope = mutation({
       await ctx.db.delete(node._id);
     }
 
-    // Delete all checkpoints for this scope
     const checkpoints = await ctx.db
       .query("checkpoints")
       .withIndex("by_scope", (q) => q.eq("scope", scope._id))
@@ -587,17 +469,15 @@ export const deleteScope = mutation({
       await ctx.db.delete(checkpoint._id);
     }
 
-    // Delete the scope record itself
     await ctx.db.delete(scope._id);
 
     return null;
   },
 });
 
-
 /**
  * Get document at a specific position without moving head.
- * Returns null for position 0, out-of-bounds positions, or non-existent scope.
+ * Returns null for position 0 or out-of-bounds.
  */
 export const getAtPosition = query({
   args: {
@@ -606,19 +486,14 @@ export const getAtPosition = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    // Position 0 means "before any state" - return null
-    if (args.position <= 0) {
-      return null;
-    }
+    if (args.position <= 0) return null;
 
     const scope = await ctx.db
       .query("scopes")
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) {
-      return null;
-    }
+    if (!scope) return null;
 
     const node = await ctx.db
       .query("nodes")

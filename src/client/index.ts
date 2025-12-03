@@ -11,9 +11,6 @@ type MutationCtx = Pick<
 >;
 type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
 
-/**
- * Timeline status returned by status()
- */
 export interface TimelineStatus {
   canUndo: boolean;
   canRedo: boolean;
@@ -27,18 +24,8 @@ export interface TimelineStatus {
  * Maintains a linear history of state snapshots organized by scope.
  * Supports named checkpoints that persist independently of the timeline.
  *
- * Terminology:
- * - Node: A state snapshot in the timeline
- * - Head: Current position (cursor) in the timeline
- * - Root: First node (position 1)
- * - Leaf: Most recent node
- * - Prune: Remove nodes ahead of head when pushing after undo
- *
  * @example
  * ```ts
- * import { Timeline } from "convex-timeline";
- * import { components } from "./_generated/api";
- *
  * const timeline = new Timeline(components.timeline);
  *
  * // In a mutation:
@@ -50,32 +37,9 @@ export class Timeline<TimelineScope extends string = string> {
   private maxNodesForScope: (scope: TimelineScope) => number | undefined;
 
   /**
-   * Create a new Timeline instance.
-   *
    * @param component - The timeline component API from components.timeline
-   * @param options - Configuration options
-   * @param options.maxNodesPerScope - Maximum nodes to retain per scope (default: unlimited).
-   *   Can be a number (applies to all scopes) or a record mapping scope prefixes to limits.
-   *   When using a record, keys are treated as prefixes and the longest matching prefix wins.
-   *
-   * @example
-   * ```ts
-   * // Unlimited history
-   * const timeline = new Timeline(components.timeline);
-   *
-   * // Limit all scopes to 100 nodes
-   * const timeline = new Timeline(components.timeline, {
-   *   maxNodesPerScope: 100,
-   * });
-   *
-   * // Different limits by prefix
-   * const timeline = new Timeline(components.timeline, {
-   *   maxNodesPerScope: {
-   *     "doc:": 200,      // doc:123, doc:456, etc.
-   *     "scratch:": 50,   // scratch:123, scratch:456, etc.
-   *   },
-   * });
-   * ```
+   * @param options.maxNodesPerScope - Max nodes per scope. Can be a number or
+   *   a record mapping scope prefixes to limits (longest matching prefix wins).
    */
   constructor(
     public component: ComponentApi,
@@ -84,13 +48,10 @@ export class Timeline<TimelineScope extends string = string> {
     },
   ) {
     this.maxNodesForScope = (scope: TimelineScope) => {
-      if (options?.maxNodesPerScope === undefined) {
-        return undefined;
-      }
+      if (options?.maxNodesPerScope === undefined) return undefined;
       if (typeof options.maxNodesPerScope === "number") {
         return options.maxNodesPerScope;
       }
-      // Find the longest matching prefix
       let bestMatch: { prefix: string; limit: number } | undefined;
       for (const [prefix, limit] of Object.entries(options.maxNodesPerScope)) {
         if (scope.startsWith(prefix)) {
@@ -105,18 +66,7 @@ export class Timeline<TimelineScope extends string = string> {
 
   /**
    * Push a new state onto the timeline.
-   *
    * If head is not at the leaf (after undo), nodes ahead of head are pruned.
-   *
-   * ```
-   * Before: [A:1] -- [B:2] -- [C:3]  head=2 (after undo)
-   * push(D)
-   * After:  [A:1] -- [B:2] -- [D:3]  head=3 (C pruned)
-   * ```
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param state - State to push
    */
   async push<Scope extends TimelineScope>(
     ctx: MutationCtx,
@@ -130,108 +80,55 @@ export class Timeline<TimelineScope extends string = string> {
     });
   }
 
-  /**
-   * Move head backward in the timeline.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param count - Number of positions to move backward (default: 1)
-   * @returns State at new head position, or null if at position 0
-   */
+  /** Move head backward. Returns state at new position, or null if at position 0. */
   async undo<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
     count: number = 1,
   ): Promise<unknown | null> {
-    return await ctx.runMutation(this.component.lib.undo, {
-      scope,
-      count,
-    });
+    return await ctx.runMutation(this.component.lib.undo, { scope, count });
   }
 
-  /**
-   * Move head forward in the timeline.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param count - Number of positions to move forward (default: 1)
-   * @returns State at new head position, or null if already at leaf
-   */
+  /** Move head forward. Returns state at new position, or null if at leaf. */
   async redo<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
     count: number = 1,
   ): Promise<unknown | null> {
-    return await ctx.runMutation(this.component.lib.redo, {
-      scope,
-      count,
-    });
+    return await ctx.runMutation(this.component.lib.redo, { scope, count });
   }
 
-  /**
-   * Get the current state without modifying the timeline.
-   *
-   * @param ctx - Query or mutation context
-   * @param scope - Timeline scope identifier
-   * @returns Current state, or null if at position 0
-   */
+  /** Get current state without modifying timeline. Null if at position 0. */
   async current<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
   ): Promise<unknown | null> {
-    return await ctx.runQuery(this.component.lib.getCurrent, {
-      scope,
-    });
+    return await ctx.runQuery(this.component.lib.getCurrent, { scope });
   }
 
-  /**
-   * Get timeline status including navigation availability.
-   *
-   * @param ctx - Query or mutation context
-   * @param scope - Timeline scope identifier
-   * @returns Status object with canUndo, canRedo, position, and length
-   */
+  /** Get timeline status: canUndo, canRedo, position, length. */
   async status<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
   ): Promise<TimelineStatus> {
-    return await ctx.runQuery(this.component.lib.getStatus, {
-      scope,
-    });
+    return await ctx.runQuery(this.component.lib.getStatus, { scope });
   }
 
   /**
    * Create a named checkpoint of the current state.
-   *
-   * Checkpoints are independent snapshots that persist even when
-   * timeline nodes are pruned. Use checkpoints to save important
-   * states that you may want to restore later.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param name - Checkpoint name (must be unique within scope)
+   * Checkpoints persist even when timeline nodes are pruned.
    */
   async checkpoint<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
     name: string,
   ): Promise<void> {
-    await ctx.runMutation(this.component.lib.checkpoint, {
-      scope,
-      name,
-    });
+    await ctx.runMutation(this.component.lib.checkpoint, { scope, name });
   }
 
   /**
    * Restore a checkpoint by pushing its state as a new node.
-   *
-   * This is non-destructive: the checkpoint state is pushed as a new
-   * node, so you can undo the restore operation.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param name - Checkpoint name to restore
-   * @returns The restored state
+   * Non-destructive: you can undo the restore.
    */
   async restoreCheckpoint<Scope extends TimelineScope>(
     ctx: MutationCtx,
@@ -245,14 +142,7 @@ export class Timeline<TimelineScope extends string = string> {
     });
   }
 
-  /**
-   * Get a checkpoint's document without restoring it.
-   *
-   * @param ctx - Query or mutation context
-   * @param scope - Timeline scope identifier
-   * @param name - Checkpoint name to retrieve
-   * @returns The checkpoint's document, or null if not found
-   */
+  /** Get a checkpoint's document without restoring it. */
   async getCheckpoint<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
@@ -264,84 +154,40 @@ export class Timeline<TimelineScope extends string = string> {
     });
   }
 
-  /**
-   * List all checkpoint names for a scope.
-   *
-   * @param ctx - Query or mutation context
-   * @param scope - Timeline scope identifier
-   * @returns Array of checkpoint names
-   */
+  /** List all checkpoint names for a scope. */
   async getCheckpoints<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
   ): Promise<string[]> {
-    return await ctx.runQuery(this.component.lib.getCheckpoints, {
-      scope,
-    });
+    return await ctx.runQuery(this.component.lib.getCheckpoints, { scope });
   }
 
-  /**
-   * Delete a checkpoint.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   * @param name - Checkpoint name to delete
-   */
+  /** Delete a checkpoint. */
   async deleteCheckpoint<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
     name: string,
   ): Promise<void> {
-    await ctx.runMutation(this.component.lib.deleteCheckpoint, {
-      scope,
-      name,
-    });
+    await ctx.runMutation(this.component.lib.deleteCheckpoint, { scope, name });
   }
 
-  /**
-   * Clear all nodes from a scope, resetting head to 0.
-   *
-   * Checkpoints are preserved. Returns without error for non-existent scopes.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   */
+  /** Clear all nodes from a scope, resetting head to 0. Checkpoints preserved. */
   async clear<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
   ): Promise<void> {
-    await ctx.runMutation(this.component.lib.clear, {
-      scope,
-    });
+    await ctx.runMutation(this.component.lib.clear, { scope });
   }
 
-  /**
-   * Delete a scope and all its data (nodes, checkpoints, and scope record).
-   *
-   * Returns without error for non-existent scopes.
-   *
-   * @param ctx - Mutation context
-   * @param scope - Timeline scope identifier
-   */
+  /** Delete a scope and all its data (nodes, checkpoints, scope record). */
   async deleteScope<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,
   ): Promise<void> {
-    await ctx.runMutation(this.component.lib.deleteScope, {
-      scope,
-    });
+    await ctx.runMutation(this.component.lib.deleteScope, { scope });
   }
 
-  /**
-   * Get document at a specific position without moving head.
-   *
-   * Returns null for position 0, out-of-bounds positions, or non-existent scopes.
-   *
-   * @param ctx - Query or mutation context
-   * @param scope - Timeline scope identifier
-   * @param position - Position in the timeline (1-indexed)
-   * @returns Document at the position, or null if not found
-   */
+  /** Get document at a specific position without moving head. */
   async getAtPosition<Scope extends TimelineScope>(
     ctx: QueryCtx,
     scope: Scope,
@@ -356,18 +202,11 @@ export class Timeline<TimelineScope extends string = string> {
   /**
    * Create a scoped facade with the scope pre-bound.
    *
-   * Useful when working with a single scope repeatedly.
-   *
-   * @param scope - Timeline scope identifier
-   * @returns Object with all timeline methods, scope pre-bound
-   *
    * @example
    * ```ts
    * const docTimeline = timeline.for("doc:123");
-   *
    * await docTimeline.push(ctx, { text: "Hello" });
    * await docTimeline.undo(ctx);
-   * await docTimeline.checkpoint(ctx, "v1");
    * ```
    */
   for<Scope extends TimelineScope>(scope: Scope) {
