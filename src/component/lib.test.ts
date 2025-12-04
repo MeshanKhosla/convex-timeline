@@ -457,6 +457,23 @@ describe("timeline component", () => {
       expect(result).toEqual({ value: "A" });
     });
 
+    test("redo with count 0 when head is null returns null and does not modify head", async () => {
+      const t = initConvexTest();
+      const scope = "test-scope";
+
+      await t.mutation(api.lib.push, { scope, document: { value: "A" } });
+      await t.mutation(api.lib.undo, { scope }); // head is now null
+
+      const statusBefore = await t.query(api.lib.getStatus, { scope });
+      expect(statusBefore.position).toBeNull();
+
+      const result = await t.mutation(api.lib.redo, { scope, count: 0 });
+
+      const statusAfter = await t.query(api.lib.getStatus, { scope });
+      expect(statusAfter.position).toBeNull(); // Should remain null, not become -1
+      expect(result).toBeNull(); // No current state when head is null
+    });
+
     test("redo when already at latest position returns current", async () => {
       const t = initConvexTest();
       const scope = "test-scope";

@@ -211,17 +211,30 @@ export const redo = mutation({
 
     if (!scope) return null;
 
+    const count = args.count ?? 1;
+
+    // If count is 0, return current state without moving (no-op)
+    if (count === 0) {
+      if (scope.head === null) return null;
+      const head = scope.head;
+      const node = await ctx.db
+        .query("nodes")
+        .withIndex("by_scope_index", (q) =>
+          q.eq("scope", scope._id).eq("index", head),
+        )
+        .unique();
+      return node?.document ?? null;
+    }
+
     const leafNode = await ctx.db
       .query("nodes")
       .withIndex("by_scope_index", (q) => q.eq("scope", scope._id))
       .order("desc")
       .first();
 
-    // No nodes exist
     if (!leafNode) return null;
 
     const maxIndex = leafNode.index;
-    const count = args.count ?? 1;
     // 0-indexed: if head is null, start from -1 so adding count moves to correct position
     const currentPosition = scope.head ?? -1;
     const newHead = Math.min(maxIndex, currentPosition + count);
