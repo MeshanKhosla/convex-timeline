@@ -176,7 +176,7 @@ export class Timeline<TimelineScope extends string = string> {
     await ctx.runMutation(this.component.lib.deleteCheckpoint, { scope, name });
   }
 
-  /** Clear all nodes from a scope, resetting head to 0. Checkpoints preserved. */
+  /** Clear all nodes from a scope, resetting head to null. Checkpoints preserved. */
   async clear<Scope extends TimelineScope>(
     ctx: MutationCtx,
     scope: Scope,

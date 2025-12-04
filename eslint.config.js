@@ -34,7 +34,6 @@ export default [
   // Convex code - Worker environment
   {
     files: ["src/**/*.{ts,tsx}", "example/convex/**/*.{ts,tsx}"],
-    ignores: ["src/react/**"],
     languageOptions: {
       globals: globals.worker,
     },
@@ -59,9 +58,9 @@ export default [
       ],
     },
   },
-  // React app code - Browser environment
+  // React app code - Browser environment (example app only)
   {
-    files: ["src/react/**/*.{ts,tsx}", "example/src/**/*.{ts,tsx}"],
+    files: ["example/src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

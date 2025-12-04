@@ -23,7 +23,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1>
-          Todo Lists{" "}
+          Todo Timeline{" "}
           <span className="header-subtitle">
             - Powered by{" "}
             <a

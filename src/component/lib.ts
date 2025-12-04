@@ -75,10 +75,10 @@ async function pruneOldestIfNeeded(
   const allNodes = await ctx.db
     .query("nodes")
     .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
+    .order("asc")
     .collect();
 
   if (allNodes.length > maxNodes) {
-    allNodes.sort((a, b) => a.index - b.index);
     const nodesToDelete = allNodes.slice(0, allNodes.length - maxNodes);
     const prunedPositions = new Set(nodesToDelete.map((n) => n.index));
 
@@ -322,9 +322,14 @@ export const createCheckpoint = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) throw new Error(`Scope "${args.scope}" not found`);
+    if (!scope)
+      throw new Error(
+        `Timeline scope "${args.scope}" not found. Use push() to create a new scope.`,
+      );
     if (scope.head === null)
-      throw new Error("Cannot checkpoint when head is null (no state)");
+      throw new Error(
+        "Cannot create checkpoint: timeline is at the beginning (no state). Push a state first.",
+      );
 
     const head = scope.head;
     const currentNode = await ctx.db
@@ -378,7 +383,10 @@ export const restoreCheckpoint = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.scope))
       .unique();
 
-    if (!scope) throw new Error(`Scope "${args.scope}" not found`);
+    if (!scope)
+      throw new Error(
+        `Timeline scope "${args.scope}" not found. Use push() to create a new scope.`,
+      );
 
     const checkpoint = await ctx.db
       .query("checkpoints")
@@ -387,7 +395,10 @@ export const restoreCheckpoint = mutation({
       )
       .unique();
 
-    if (!checkpoint) throw new Error(`Checkpoint "${args.name}" not found`);
+    if (!checkpoint)
+      throw new Error(
+        `Checkpoint "${args.name}" not found in scope "${args.scope}". Use createCheckpoint() to create a checkpoint.`,
+      );
 
     const newIndex = await pruneAheadAndInsert(
       ctx,
@@ -603,14 +614,13 @@ export const listNodes = query({
 
     const nodes = await ctx.db
       .query("nodes")
-      .withIndex("by_scope", (q) => q.eq("scope", scope._id))
+      .withIndex("by_scope_index", (q) => q.eq("scope", scope._id))
+      .order("asc")
       .collect();
 
-    return nodes
-      .map((node) => ({
-        position: node.index,
-        document: node.document,
-      }))
-      .sort((a, b) => a.position - b.position);
+    return nodes.map((node) => ({
+      position: node.index,
+      document: node.document,
+    }));
   },
 });

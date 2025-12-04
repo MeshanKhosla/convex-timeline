@@ -506,7 +506,9 @@ describe("timeline component", () => {
 
       await expect(
         t.mutation(api.lib.createCheckpoint, { scope, name: "v1" }),
-      ).rejects.toThrow("Cannot checkpoint when head is null");
+      ).rejects.toThrow(
+        "Cannot create checkpoint: timeline is at the beginning",
+      );
     });
 
     test("createCheckpoint with existing name overwrites", async () => {
