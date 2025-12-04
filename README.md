@@ -11,6 +11,10 @@ provides:
 - **Checkpoints**: Named snapshots that persist independently of the timeline
 - **Automatic Pruning**: Configurable limits to prevent unbounded growth
 
+
+https://github.com/user-attachments/assets/22bb5e41-89ac-4273-9bb7-7ab298e5d012
+
+
 ## Installation
 
 ```sh
@@ -116,6 +120,8 @@ After push(D) — C is pruned:
     [A] → [B] → [D]
                 head
 ```
+
+This pruning behavior matches the standard undo/redo model used by editors like Google Docs, VSCode, and Notion, where pushing new state after an undo discards the forward history. Future versions may support alternative models such as manual branching, time travel, and reconciliation strategies, depending on community interest.
 
 Checkpoints persist through pruning:
 
