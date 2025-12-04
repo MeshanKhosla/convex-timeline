@@ -4,7 +4,8 @@ A Convex component for undo/redo state management with named checkpoints.
 
 ## Overview
 
-Timeline maintains a linear history of state snapshots organized by scope. It provides:
+Timeline maintains a linear history of state snapshots organized by scope. It
+provides:
 
 - **Undo/Redo**: Navigate backward and forward through state history
 - **Checkpoints**: Named snapshots that persist independently of the timeline
@@ -44,7 +45,9 @@ await doc.push(ctx, { text: "Hello" });
 await doc.undo(ctx);
 ```
 
-See [example/convex](https://github.com/MeshanKhosla/convex-timeline/tree/main/example/convex) for a full example.
+See
+[example/convex](https://github.com/MeshanKhosla/convex-timeline/tree/main/example/convex)
+for a full example.
 
 ## Constructor Options
 
@@ -63,38 +66,40 @@ new Timeline(components.timeline, {
 
 ## API
 
-All methods are available both on `Timeline` (with scope parameter) and on the scoped facade from `forScope()`.
+All methods are available both on `Timeline` (with scope parameter) and on the
+scoped facade from `forScope()`.
 
 ### Timeline Operations
 
-| Method | Description |
-|--------|-------------|
-| `push(ctx, scope, state)` | Push new state. Prunes nodes ahead of head if after undo. |
-| `undo(ctx, scope, count?)` | Move head back. Returns state or `null` if at start. |
-| `redo(ctx, scope, count?)` | Move head forward. Returns state or `null` if at end. |
-| `currentDocument(ctx, scope)` | Get current state without modifying timeline. |
-| `status(ctx, scope)` | Returns `{ canUndo, canRedo, position, length }`. |
-| `clear(ctx, scope)` | Remove all nodes, reset head. Preserves checkpoints. |
-| `deleteScope(ctx, scope)` | Delete scope and all data including checkpoints. |
+| Method                        | Description                                               |
+| ----------------------------- | --------------------------------------------------------- |
+| `push(ctx, scope, state)`     | Push new state. Prunes nodes ahead of head if after undo. |
+| `undo(ctx, scope, count?)`    | Move head back. Returns state or `null` if at start.      |
+| `redo(ctx, scope, count?)`    | Move head forward. Returns state or `null` if at end.     |
+| `currentDocument(ctx, scope)` | Get current state without modifying timeline.             |
+| `status(ctx, scope)`          | Returns `{ canUndo, canRedo, position, length }`.         |
+| `clear(ctx, scope)`           | Remove all nodes, reset head. Preserves checkpoints.      |
+| `deleteScope(ctx, scope)`     | Delete scope and all data including checkpoints.          |
 
 ### Checkpoints
 
-Checkpoints are named snapshots stored independently—they persist even when nodes are pruned.
+Checkpoints are named snapshots stored independently—they persist even when
+nodes are pruned.
 
-| Method | Description |
-|--------|-------------|
-| `createCheckpoint(ctx, scope, name)` | Save current state as named checkpoint. |
-| `restoreCheckpoint(ctx, scope, name)` | Push checkpoint state as new node (undoable). |
-| `getCheckpointDocument(ctx, scope, name)` | Get checkpoint state without restoring. |
-| `listCheckpoints(ctx, scope)` | List all checkpoints with names and positions. |
-| `deleteCheckpoint(ctx, scope, name)` | Delete a checkpoint. |
+| Method                                    | Description                                    |
+| ----------------------------------------- | ---------------------------------------------- |
+| `createCheckpoint(ctx, scope, name)`      | Save current state as named checkpoint.        |
+| `restoreCheckpoint(ctx, scope, name)`     | Push checkpoint state as new node (undoable).  |
+| `getCheckpointDocument(ctx, scope, name)` | Get checkpoint state without restoring.        |
+| `listCheckpoints(ctx, scope)`             | List all checkpoints with names and positions. |
+| `deleteCheckpoint(ctx, scope, name)`      | Delete a checkpoint.                           |
 
 ### Inspection
 
-| Method | Description |
-|--------|-------------|
+| Method                                   | Description                                         |
+| ---------------------------------------- | --------------------------------------------------- |
 | `getDocumentAtPosition(ctx, scope, pos)` | Get state at specific position without moving head. |
-| `listNodes(ctx, scope)` | List all nodes with positions and documents. |
+| `listNodes(ctx, scope)`                  | List all nodes with positions and documents.        |
 
 ## How It Works
 
@@ -113,6 +118,7 @@ After push(D) — C is pruned:
 ```
 
 Checkpoints persist through pruning:
+
 ```
 createCheckpoint("v1") at C → saves C's state
 After C is pruned → checkpoint "v1" still holds C

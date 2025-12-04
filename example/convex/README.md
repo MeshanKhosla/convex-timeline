@@ -28,7 +28,8 @@ const timeline = new Timeline(components.timeline, {
 
 ## Push State After Changes
 
-Every mutation that modifies state should push to the timeline. This records the state for undo/redo.
+Every mutation that modifies state should push to the timeline. This records the
+state for undo/redo.
 
 ```ts
 export const addTodo = mutation({
@@ -57,7 +58,8 @@ export const addTodo = mutation({
 
 ## Undo/Redo
 
-Undo moves the head backward and returns the previous state. Apply it to your database.
+Undo moves the head backward and returns the previous state. Apply it to your
+database.
 
 ```ts
 export const undo = mutation({
@@ -112,7 +114,8 @@ export const getTimelineStatus = query({
 
 ## Checkpoints
 
-Checkpoints are named snapshots that persist even when timeline nodes are pruned. Useful for "save points" users can return to.
+Checkpoints are named snapshots that persist even when timeline nodes are
+pruned. Useful for "save points" users can return to.
 
 ```ts
 // Save current state as a named checkpoint
