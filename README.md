@@ -15,6 +15,8 @@ provides:
 https://github.com/user-attachments/assets/22bb5e41-89ac-4273-9bb7-7ab298e5d012
 
 
+Read the [How It Works](https://github.com/MeshanKhosla/convex-timeline?tab=readme-ov-file#how-it-works) section for details on the pruning strategy and possible future improvements.
+
 ## Installation
 
 ```sh
