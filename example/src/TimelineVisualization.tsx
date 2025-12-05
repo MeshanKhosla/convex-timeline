@@ -79,6 +79,28 @@ export function TimelineVisualization({
     <div className="timeline-viz">
       <div className="timeline-container">
         <div className="timeline-track">
+          {/* Null state indicator - shows when currentPosition is null but nodes exist */}
+          {currentPosition === null && nodes.length > 0 && (
+            <div className="timeline-node null-state" style={{ left: "5%" }}>
+              <div className="node-connector"></div>
+              <div
+                className="node-circle null-state-circle"
+                onClick={() => {
+                  if (onNavigateToPosition && nodes.length > 0) {
+                    const minPosition = Math.min(
+                      ...nodes.map((n) => n.position),
+                    );
+                    onNavigateToPosition(minPosition);
+                  }
+                }}
+                style={{
+                  cursor: "pointer",
+                }}
+              >
+                <div className="null-state-indicator"></div>
+              </div>
+            </div>
+          )}
           {/* Nodes */}
           {nodes.map((node) => {
             const isHead = node.position === currentPosition;

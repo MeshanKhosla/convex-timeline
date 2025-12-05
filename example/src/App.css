@@ -703,12 +703,37 @@
   border-width: 2.5px;
 }
 
+.timeline-node.null-state {
+  z-index: 3;
+}
+
+.timeline-node.null-state .node-connector {
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+
+.null-state-circle {
+  background: var(--bg-base);
+  border-color: var(--text-muted);
+  border-style: dashed;
+  border-width: 2px;
+  opacity: 0.7;
+}
+
 .head-indicator {
   width: 5px;
   height: 5px;
   background: white;
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
+}
+
+.null-state-indicator {
+  width: 4px;
+  height: 4px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  opacity: 0.8;
 }
 
 .checkpoint-indicator {
