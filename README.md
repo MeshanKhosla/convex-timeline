@@ -55,6 +55,12 @@ See
 [example/convex](https://github.com/MeshanKhosla/convex-timeline/tree/main/example/convex)
 for a full example.
 
+
+https://github.com/user-attachments/assets/75f3a2da-f2b4-43c2-aade-aa537afb5bb3
+
+
+[Hosted version](https://todo-timeline.vercel.app/)
+
 ## Constructor Options
 
 ```ts
