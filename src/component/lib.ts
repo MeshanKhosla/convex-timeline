@@ -16,17 +16,19 @@ async function pruneAheadAndInsert(
 ): Promise<number> {
   // If head is null, we're before any nodes, so prune all nodes
   // If head is a number, prune nodes with index > head
-  const nodesToPrune =
-    currentHead === null
-      ? await ctx.db
-          .query("nodes")
-          .withIndex("by_scope", (q) => q.eq("scope", scopeId))
-          .collect()
-      : await ctx.db
-          .query("nodes")
-          .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
-          .filter((q) => q.gt(q.field("index"), currentHead))
-          .collect();
+  let nodesToPrune;
+  if (currentHead === null) {
+    nodesToPrune = await ctx.db
+      .query("nodes")
+      .withIndex("by_scope", (q) => q.eq("scope", scopeId))
+      .collect();
+  } else {
+    const allNodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
+      .collect();
+    nodesToPrune = allNodes.filter((node) => node.index > currentHead);
+  }
 
   const prunedPositions = new Set(nodesToPrune.map((n) => n.index));
 
