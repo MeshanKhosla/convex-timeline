@@ -100,6 +100,7 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [checkpointName, setCheckpointName] = useState("");
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
 
   if (todos === undefined || status === undefined) {
     return (
@@ -209,12 +210,6 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
           </button>
         </div>
       </div>
-
-      <TimelineVisualization
-        listId={listId}
-        currentPosition={status.position}
-        onNavigateToPosition={handleNavigateToPosition}
-      />
 
       <form className="add-form" onSubmit={handleAdd}>
         <input
@@ -359,6 +354,35 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="timeline-section">
+        <button
+          className="timeline-toggle"
+          onClick={() => setIsTimelineExpanded(!isTimelineExpanded)}
+        >
+          <span className="timeline-toggle-text">Timeline Visualization</span>
+          <svg
+            className={`timeline-toggle-icon ${isTimelineExpanded ? "expanded" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <div
+          className={`timeline-content ${isTimelineExpanded ? "expanded" : ""}`}
+        >
+          <div className="timeline-content-inner">
+            <TimelineVisualization
+              listId={listId}
+              currentPosition={status.position}
+              onNavigateToPosition={handleNavigateToPosition}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

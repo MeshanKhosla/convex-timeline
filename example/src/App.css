@@ -344,12 +344,12 @@
 }
 
 .action-btn {
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -450,8 +450,8 @@
 
 /* Checkpoints Section */
 .checkpoints-section {
-  margin-top: auto;
   padding-top: 12px;
+  margin-top: 12px;
   border-top: 1px solid var(--border);
 }
 
@@ -461,19 +461,19 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .checkpoint-form {
   display: flex;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .checkpoint-form input {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -497,16 +497,17 @@
 }
 
 .checkpoint-form button {
-  padding: 6px 12px;
+  padding: 5px 10px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .checkpoint-form button:hover:not(:disabled) {
@@ -523,32 +524,100 @@
 .checkpoint-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .checkpoint-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
 
 .checkpoint-name {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text);
 }
 
 .checkpoint-actions {
   display: flex;
-  gap: 4px;
+  gap: 3px;
+}
+
+/* Timeline Section */
+.timeline-section {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.timeline-toggle:hover {
+  background: var(--bg-card);
+  border-color: var(--border-focus);
+  color: var(--text);
+}
+
+.timeline-toggle-text {
+  flex: 1;
+  text-align: left;
+}
+
+.timeline-toggle-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.timeline-toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.timeline-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  margin-top: 0;
+  will-change: grid-template-rows;
+  contain: layout;
+}
+
+.timeline-content-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.timeline-content.expanded {
+  grid-template-rows: 1fr;
+  margin-top: 8px;
 }
 
 /* Timeline Visualization */
 .timeline-viz {
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 10px;
   background: var(--bg-card);
   border: 1px solid var(--border);
