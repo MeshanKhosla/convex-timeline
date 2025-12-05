@@ -8,6 +8,7 @@ import { TimelineVisualization } from "./TimelineVisualization";
 export default function App() {
   const todoLists = useQuery(api.example.getTodoLists);
   const createList = useMutation(api.example.createTodoList);
+  const deleteList = useMutation(api.example.deleteTodoList);
   const [newListName, setNewListName] = useState("");
   const [selectedId, setSelectedId] = useState<Id<"todoLists"> | null>(null);
 
@@ -17,6 +18,14 @@ export default function App() {
     const id = await createList({ name: newListName.trim() });
     setNewListName("");
     setSelectedId(id);
+  };
+
+  const handleDelete = async (listId: Id<"todoLists">) => {
+    await deleteList({ todoListId: listId });
+    // Clear selection if the deleted list was selected
+    if (selectedId === listId) {
+      setSelectedId(null);
+    }
   };
 
   return (
@@ -56,13 +65,34 @@ export default function App() {
 
           <div className="lists">
             {todoLists?.map((list) => (
-              <button
+              <div
                 key={list._id}
-                className={`list-button ${selectedId === list._id ? "active" : ""}`}
-                onClick={() => setSelectedId(list._id)}
+                className={`list-item ${selectedId === list._id ? "active" : ""}`}
               >
-                {list.name}
-              </button>
+                <button
+                  className="list-button"
+                  onClick={() => setSelectedId(list._id)}
+                >
+                  {list.name}
+                </button>
+                <button
+                  className="list-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(list._id);
+                  }}
+                  title="Delete list"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         </aside>

@@ -117,11 +117,31 @@
   overflow-y: auto;
 }
 
-.list-button {
-  width: 100%;
-  padding: 8px 10px;
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
   background: transparent;
   border: 1px solid transparent;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.list-item:hover {
+  background: var(--bg-elevated);
+}
+
+.list-item.active {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+}
+
+.list-button {
+  flex: 1;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -132,14 +152,43 @@
 }
 
 .list-button:hover {
-  background: var(--bg-elevated);
   color: var(--text);
 }
 
-.list-button.active {
-  background: var(--bg-elevated);
-  border-color: var(--accent);
+.list-item.active .list-button {
   color: var(--text);
+}
+
+.list-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.list-delete-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.list-item:hover .list-delete-btn {
+  opacity: 1;
+}
+
+.list-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 /* Main Panel */

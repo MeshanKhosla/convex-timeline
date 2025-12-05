@@ -20,6 +20,25 @@ export const createTodoList = mutation({
   },
 });
 
+export const deleteTodoList = mutation({
+  args: {
+    todoListId: v.id("todoLists"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.todoListId);
+    if (!list) throw new Error("Todo list not found");
+
+    // Delete the timeline scope data
+    await timeline.deleteScope(ctx, `todos:${args.todoListId}`);
+
+    // Delete the todo list
+    await ctx.db.delete(args.todoListId);
+
+    return null;
+  },
+});
+
 export const getTodoLists = query({
   args: {},
   returns: v.array(
