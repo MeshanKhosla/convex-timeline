@@ -23,11 +23,12 @@ async function pruneAheadAndInsert(
       .withIndex("by_scope", (q) => q.eq("scope", scopeId))
       .collect();
   } else {
-    const allNodes = await ctx.db
+    nodesToPrune = await ctx.db
       .query("nodes")
-      .withIndex("by_scope_index", (q) => q.eq("scope", scopeId))
+      .withIndex("by_scope_index", (q) =>
+        q.eq("scope", scopeId).gt("index", currentHead),
+      )
       .collect();
-    nodesToPrune = allNodes.filter((node) => node.index > currentHead);
   }
 
   const prunedPositions = new Set(nodesToPrune.map((n) => n.index));
