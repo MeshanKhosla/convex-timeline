@@ -55,9 +55,7 @@ See
 [example/convex](https://github.com/MeshanKhosla/convex-timeline/tree/main/example/convex)
 for a full example.
 
-
 https://github.com/user-attachments/assets/75f3a2da-f2b4-43c2-aade-aa537afb5bb3
-
 
 [Hosted version](https://todo-timeline.vercel.app/)
 
@@ -150,6 +148,37 @@ See [example/](./example) for a complete todo app with undo/redo.
 ```sh
 cd example && npm install && npm run dev
 ```
+
+# FAQ
+
+## Why do we prune the redo branch?
+
+I looked at many text editing programs (Google docs, VSCode, Notion, etc) and
+mimicked their behavior. When we `undo` and `push`, the redo branch can not be
+accessed again so we prune it to save on storage space.
+
+## Why are checkpoints stored in a separate table?
+
+Consider the case where we checkpoint a node that gets pruned, either because
+the scope reaches capacity or it's part of the redo branch. In this case, we can
+no longer restore to that state if we stored the checkpoint as a property of the
+node.
+
+## Why does restoring a checkpoint create a new node instead of traveling back to it?
+
+The original node might not exist anymore if it was pruned. Even if it does
+exist, creating a new node makes the restore undoable, meaning you can go back
+to where you were before restoring. It also protects the restored state from
+being pruned if you undo and push new state later. There is a future where I
+introduce a time-travel mode if there is demand for it.
+
+## Why not use the Convex transaction log?
+
+Ideally the Convex transaction log (described
+[here](https://stack.convex.dev/how-convex-works#the-transaction-log)) can be
+used so we can specify pointers to data (obviously this would be more
+complicated since we'd need to consider indexes) but unfortunately Convex does
+not currently expose the transaction log.
 
 ## License
 
