@@ -149,6 +149,10 @@
   text-align: left;
   cursor: pointer;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .list-button:hover {
@@ -157,6 +161,23 @@
 
 .list-item.active .list-button {
   color: var(--text);
+}
+
+.list-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deletion-timer {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .list-delete-btn {
@@ -191,6 +212,18 @@
   color: var(--danger);
 }
 
+.read-only-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+  cursor: help;
+}
+
 /* Main Panel */
 .main-panel {
   background: var(--bg-card);
@@ -219,10 +252,56 @@
   flex: 1;
 }
 
+.read-only-notice {
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
 .todo-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.deletion-timer-panel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(220, 38, 38, 0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.timer-info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #dc2626;
+  opacity: 0.7;
+  cursor: help;
+  transition: opacity 0.15s;
+}
+
+.timer-info-icon:hover {
+  opacity: 1;
+}
+
+.timer-info-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .toolbar-actions {
@@ -367,6 +446,15 @@
   background-size: 10px;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.todo-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.todo-checkbox:disabled:hover {
+  border-color: var(--border);
 }
 
 .todo-text {
