@@ -32,7 +32,7 @@ const incrementCounter = async (ctx: any) => {
   const counter = await ctx.db.query("todoCounter").first();
 
   if (counter) {
-    await ctx.db.patch(counter._id, {
+    await ctx.db.patch("todoCounter", counter._id, {
       totalTodoListsCreated: counter.totalTodoListsCreated + 1,
     });
   } else {
@@ -75,7 +75,7 @@ export const deleteTodoList = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     if (!list) throw new Error("Todo list not found");
 
     // Prevent deletion of protected lists
@@ -112,7 +112,7 @@ export const deleteTodoList = mutation({
     await timeline.deleteScope(ctx, `todos:${args.todoListId}`);
 
     // Delete the todo list
-    await ctx.db.delete(args.todoListId);
+    await ctx.db.delete("todoLists", args.todoListId);
 
     return null;
   },
@@ -151,7 +151,7 @@ export const getTodos = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     return list?.items ?? [];
   },
 });
@@ -165,7 +165,7 @@ export const addTodo = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     if (!list) throw new Error("Todo list not found");
 
     // Prevent modification of protected lists
@@ -176,7 +176,7 @@ export const addTodo = mutation({
       { id: crypto.randomUUID(), text: args.text, completed: false },
     ];
 
-    await ctx.db.patch(args.todoListId, { items: newItems });
+    await ctx.db.patch("todoLists", args.todoListId, { items: newItems });
 
     // Record state in timeline
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
@@ -195,7 +195,7 @@ export const updateTodo = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     if (!list) throw new Error("Todo list not found");
 
     // Prevent modification of protected lists
@@ -211,7 +211,7 @@ export const updateTodo = mutation({
         : item,
     );
 
-    await ctx.db.patch(args.todoListId, { items: newItems });
+    await ctx.db.patch("todoLists", args.todoListId, { items: newItems });
 
     // Record state in timeline
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
@@ -228,7 +228,7 @@ export const deleteTodo = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     if (!list) throw new Error("Todo list not found");
 
     // Prevent modification of protected lists
@@ -236,7 +236,7 @@ export const deleteTodo = mutation({
 
     const newItems = list.items.filter((item) => item.id !== args.todoId);
 
-    await ctx.db.patch(args.todoListId, { items: newItems });
+    await ctx.db.patch("todoLists", args.todoListId, { items: newItems });
 
     // Record state in timeline
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
@@ -262,7 +262,7 @@ export const undo = mutation({
     const state = await todoTimeline.undo(ctx, args.count);
 
     // null means we're at position 0 (no state), use empty array
-    await ctx.db.patch(args.todoListId, {
+    await ctx.db.patch("todoLists", args.todoListId, {
       items:
         (state as Array<{ id: string; text: string; completed: boolean }>) ??
         [],
@@ -287,7 +287,7 @@ export const redo = mutation({
 
     // Only update if we actually moved forward
     if (state !== null) {
-      await ctx.db.patch(args.todoListId, {
+      await ctx.db.patch("todoLists", args.todoListId, {
         items: state as Array<{ id: string; text: string; completed: boolean }>,
       });
     }
@@ -343,7 +343,7 @@ export const restoreCheckpoint = mutation({
     const todoTimeline = timeline.forScope(`todos:${args.todoListId}`);
     const state = await todoTimeline.restoreCheckpoint(ctx, args.name);
 
-    await ctx.db.patch(args.todoListId, {
+    await ctx.db.patch("todoLists", args.todoListId, {
       items: state as Array<{ id: string; text: string; completed: boolean }>,
     });
 
@@ -419,7 +419,7 @@ export const scheduledDeleteTodoList = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const list = await ctx.db.get(args.todoListId);
+    const list = await ctx.db.get("todoLists", args.todoListId);
     if (!list) {
       // List already deleted, nothing to do
       return null;
@@ -434,7 +434,7 @@ export const scheduledDeleteTodoList = internalMutation({
     await timeline.deleteScope(ctx, `todos:${args.todoListId}`);
 
     // Delete the todo list
-    await ctx.db.delete(args.todoListId);
+    await ctx.db.delete("todoLists", args.todoListId);
 
     return null;
   },

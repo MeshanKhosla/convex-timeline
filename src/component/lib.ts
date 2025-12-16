@@ -34,7 +34,7 @@ async function pruneAheadAndInsert(
   const prunedPositions = new Set(nodesToPrune.map((n) => n.index));
 
   for (const node of nodesToPrune) {
-    await ctx.db.delete(node._id);
+    await ctx.db.delete("nodes", node._id);
   }
 
   if (prunedPositions.size > 0) {
@@ -48,7 +48,7 @@ async function pruneAheadAndInsert(
         checkpoint.position !== null &&
         prunedPositions.has(checkpoint.position)
       ) {
-        await ctx.db.patch(checkpoint._id, { position: null });
+        await ctx.db.patch("checkpoints", checkpoint._id, { position: null });
       }
     }
   }
@@ -86,7 +86,7 @@ async function pruneOldestIfNeeded(
     const prunedPositions = new Set(nodesToDelete.map((n) => n.index));
 
     for (const node of nodesToDelete) {
-      await ctx.db.delete(node._id);
+      await ctx.db.delete("nodes", node._id);
     }
 
     // Invalidate checkpoints at pruned positions
@@ -101,7 +101,7 @@ async function pruneOldestIfNeeded(
         checkpoint.position !== null &&
         prunedPositions.has(checkpoint.position)
       ) {
-        await ctx.db.patch(checkpoint._id, { position: null });
+        await ctx.db.patch("checkpoints", checkpoint._id, { position: null });
       }
     }
   }
@@ -136,7 +136,7 @@ export const push = mutation({
         name: args.scope,
         head: null, // null = before any nodes
       });
-      scope = await ctx.db.get(scopeId);
+      scope = await ctx.db.get("scopes", scopeId);
       if (!scope) throw new Error("Failed to create scope");
     }
 
@@ -147,7 +147,7 @@ export const push = mutation({
       args.document,
     );
 
-    await ctx.db.patch(scope._id, { head: newIndex });
+    await ctx.db.patch("scopes", scope._id, { head: newIndex });
 
     if (args.maxNodes !== undefined) {
       await pruneOldestIfNeeded(ctx, scope._id, args.maxNodes);
@@ -181,7 +181,7 @@ export const undo = mutation({
     const count = args.count ?? 1;
     // 0-indexed: going below 0 means head becomes null
     const newHead = scope.head - count < 0 ? null : scope.head - count;
-    await ctx.db.patch(scope._id, { head: newHead });
+    await ctx.db.patch("scopes", scope._id, { head: newHead });
 
     if (newHead === null) return null;
 
@@ -242,7 +242,7 @@ export const redo = mutation({
     const currentPosition = scope.head ?? -1;
     const newHead = Math.min(maxIndex, currentPosition + count);
 
-    await ctx.db.patch(scope._id, { head: newHead });
+    await ctx.db.patch("scopes", scope._id, { head: newHead });
 
     const node = await ctx.db
       .query("nodes")
@@ -365,7 +365,7 @@ export const createCheckpoint = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("checkpoints", existing._id, {
         document: currentNode.document,
         position: scope.head,
       });
@@ -423,7 +423,7 @@ export const restoreCheckpoint = mutation({
       checkpoint.document,
     );
 
-    await ctx.db.patch(scope._id, { head: newIndex });
+    await ctx.db.patch("scopes", scope._id, { head: newIndex });
 
     if (args.maxNodes !== undefined) {
       await pruneOldestIfNeeded(ctx, scope._id, args.maxNodes);
@@ -478,7 +478,7 @@ export const deleteCheckpoint = mutation({
       )
       .unique();
 
-    if (checkpoint) await ctx.db.delete(checkpoint._id);
+    if (checkpoint) await ctx.db.delete("checkpoints", checkpoint._id);
 
     return null;
   },
@@ -505,10 +505,10 @@ export const clear = mutation({
       .collect();
 
     for (const node of nodes) {
-      await ctx.db.delete(node._id);
+      await ctx.db.delete("nodes", node._id);
     }
 
-    await ctx.db.patch(scope._id, { head: null });
+    await ctx.db.patch("scopes", scope._id, { head: null });
 
     return null;
   },
@@ -558,7 +558,7 @@ export const deleteScope = mutation({
       .collect();
 
     for (const node of nodes) {
-      await ctx.db.delete(node._id);
+      await ctx.db.delete("nodes", node._id);
     }
 
     const checkpoints = await ctx.db
@@ -567,10 +567,10 @@ export const deleteScope = mutation({
       .collect();
 
     for (const checkpoint of checkpoints) {
-      await ctx.db.delete(checkpoint._id);
+      await ctx.db.delete("checkpoints", checkpoint._id);
     }
 
-    await ctx.db.delete(scope._id);
+    await ctx.db.delete("scopes", scope._id);
 
     return null;
   },
