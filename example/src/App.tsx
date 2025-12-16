@@ -1,7 +1,7 @@
 import "./App.css";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
 import { TimelineVisualization } from "./TimelineVisualization";
 
@@ -23,13 +23,16 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<Id<"todoLists"> | null>(null);
 
   // Clear selection if the selected list no longer exists
+  const prevTodoListsRef = useRef(todoLists);
   useEffect(() => {
-    if (selectedId && todoLists) {
+    if (selectedId && todoLists && prevTodoListsRef.current !== todoLists) {
       const listExists = todoLists.some((list) => list._id === selectedId);
       if (!listExists) {
-        setSelectedId(null);
+        // Use setTimeout to defer the state update and avoid synchronous setState in effect
+        setTimeout(() => setSelectedId(null), 0);
       }
     }
+    prevTodoListsRef.current = todoLists;
   }, [selectedId, todoLists]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -195,7 +198,8 @@ function TodoPanel({ listId }: { listId: Id<"todoLists"> }) {
 
   useEffect(() => {
     if (scheduledDeletionTime === null || scheduledDeletionTime === undefined) {
-      setTimeRemaining(null);
+      // Use setTimeout to defer the state update and avoid synchronous setState in effect
+      setTimeout(() => setTimeRemaining(null), 0);
       return;
     }
 
