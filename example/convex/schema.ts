@@ -13,4 +13,7 @@ export default defineSchema({
       }),
     ),
   }),
+  todoCounter: defineTable({
+    totalTodoListsCreated: v.number(),
+  }),
 });

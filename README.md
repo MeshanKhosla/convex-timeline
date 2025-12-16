@@ -180,6 +180,9 @@ used so we can specify pointers to data (obviously this would be more
 complicated since we'd need to consider indexes) but unfortunately Convex does
 not currently expose the transaction log.
 
+In addition to this, it's not necessary the case that the timeline component is
+only used for tracking documents in tables. It can be used for any data!
+
 ## License
 
 MIT
